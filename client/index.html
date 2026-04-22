@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fur-Labs - Collaborative Fursona Creator</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Title Screen -->
+        <div id="screen-title" class="screen active">
+            <div class="title-container">
+                <h1 class="game-title">Fur-Labs</h1>
+                <p class="subtitle">Collaborative Fursona Creator</p>
+
+                <div class="menu-buttons">
+                    <button id="btn-create-lobby" class="btn btn-primary">Create Lobby</button>
+                    <button id="btn-join-lobby" class="btn btn-secondary">Join Lobby</button>
+                    <button id="btn-view-gallery" class="btn btn-secondary">View Gallery</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Lobby Screen -->
+        <div id="screen-create" class="screen">
+            <div class="panel">
+                <h2>Create Lobby</h2>
+                <div class="form-group">
+                    <label for="create-name">Your Name</label>
+                    <input type="text" id="create-name" maxlength="20" placeholder="Enter your name">
+                </div>
+                <div class="form-group">
+                    <label for="create-time">Drawing Time (seconds)</label>
+                    <input type="number" id="create-time" value="180" min="60" max="600">
+                </div>
+                <div class="button-group">
+                    <button id="btn-back-create" class="btn btn-secondary">Back</button>
+                    <button id="btn-confirm-create" class="btn btn-primary">Create</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Join Lobby Screen -->
+        <div id="screen-join" class="screen">
+            <div class="panel">
+                <h2>Join Lobby</h2>
+                <div class="form-group">
+                    <label for="join-name">Your Name</label>
+                    <input type="text" id="join-name" maxlength="20" placeholder="Enter your name">
+                </div>
+                <div class="form-group">
+                    <label for="join-code">Invite Code</label>
+                    <input type="text" id="join-code" maxlength="6" placeholder="XXXXXX" class="code-input">
+                </div>
+                <div class="button-group">
+                    <button id="btn-back-join" class="btn btn-secondary">Back</button>
+                    <button id="btn-confirm-join" class="btn btn-primary">Join</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Waiting Room Screen -->
+        <div id="screen-waiting" class="screen">
+            <div class="panel waiting-panel">
+                <h2>Waiting Room</h2>
+                <div class="invite-code-display">
+                    <span>Invite Code:</span>
+                    <span id="display-invite-code" class="code">------</span>
+                    <button id="btn-copy-code" class="btn btn-small">Copy</button>
+                </div>
+
+                <div class="players-list">
+                    <h3>Players</h3>
+                    <ul id="player-list"></ul>
+                </div>
+
+                <div class="ready-section">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="ready-checkbox">
+                        <span>Ready</span>
+                    </label>
+                </div>
+
+                <div class="button-group">
+                    <button id="btn-leave-lobby" class="btn btn-secondary">Leave</button>
+                    <button id="btn-start-game" class="btn btn-primary" disabled>Start Game</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Drawing Screen -->
+        <div id="screen-drawing" class="screen">
+            <div class="drawing-container">
+                <div class="drawing-header">
+                    <h2 id="drawing-part-label">Draw the Head</h2>
+                    <div class="timer" id="timer">3:00</div>
+                </div>
+
+                <div class="canvas-wrapper">
+                    <canvas id="drawing-canvas" width="800" height="400"></canvas>
+                    <div id="hint-overlay-top" class="hint-overlay top"></div>
+                    <div id="hint-overlay-bottom" class="hint-overlay bottom"></div>
+                </div>
+
+                <div class="tool-palette">
+                    <div class="tool-group">
+                        <button class="tool-btn active" data-tool="brush" title="Brush">
+                            <span class="tool-icon">&#9998;</span>
+                        </button>
+                        <button class="tool-btn" data-tool="eraser" title="Eraser">
+                            <span class="tool-icon">&#9003;</span>
+                        </button>
+                        <button class="tool-btn" data-tool="fill" title="Fill">
+                            <span class="tool-icon">&#9726;</span>
+                        </button>
+                    </div>
+
+                    <div class="tool-group">
+                        <input type="color" id="color-picker" value="#000000" title="Color">
+                        <div class="preset-colors">
+                            <button class="color-preset" data-color="#000000" style="background:#000000"></button>
+                            <button class="color-preset" data-color="#FFFFFF" style="background:#FFFFFF"></button>
+                            <button class="color-preset" data-color="#FF6B6B" style="background:#FF6B6B"></button>
+                            <button class="color-preset" data-color="#4ECDC4" style="background:#4ECDC4"></button>
+                            <button class="color-preset" data-color="#FFE66D" style="background:#FFE66D"></button>
+                            <button class="color-preset" data-color="#95E1D3" style="background:#95E1D3"></button>
+                            <button class="color-preset" data-color="#F38181" style="background:#F38181"></button>
+                            <button class="color-preset" data-color="#AA96DA" style="background:#AA96DA"></button>
+                        </div>
+                    </div>
+
+                    <div class="tool-group">
+                        <label>Size: <span id="size-value">8</span></label>
+                        <input type="range" id="brush-size" min="1" max="50" value="8">
+                    </div>
+
+                    <div class="tool-group">
+                        <button id="btn-undo" class="btn btn-small">Undo</button>
+                        <button id="btn-clear" class="btn btn-small">Clear</button>
+                    </div>
+                </div>
+
+                <div class="submit-section">
+                    <button id="btn-submit-drawing" class="btn btn-primary btn-large">Submit Drawing</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reveal Screen -->
+        <div id="screen-reveal" class="screen">
+            <div class="reveal-container">
+                <h2>Your Creation!</h2>
+
+                <div class="reveal-tabs">
+                    <button class="tab-btn active" data-tab="raw">Raw Combined</button>
+                    <button class="tab-btn" data-tab="ai">AI Lab Version</button>
+                </div>
+
+                <div class="reveal-content">
+                    <div id="raw-reveal" class="reveal-tab active">
+                        <canvas id="combined-canvas" width="800" height="1200"></canvas>
+                    </div>
+                    <div id="ai-reveal" class="reveal-tab">
+                        <div id="ai-placeholder">
+                            <button id="btn-generate-ai" class="btn btn-primary">Generate AI Lab Version</button>
+                            <p class="ai-note">Uses Nano Banana Pro to create a cohesive character</p>
+                        </div>
+                        <div id="ai-loading" class="hidden">
+                            <div class="spinner"></div>
+                            <p>Generating AI version...</p>
+                        </div>
+                        <img id="ai-result" class="hidden" alt="AI Generated Fursona">
+                    </div>
+                </div>
+
+                <div class="reveal-actions">
+                    <button id="btn-save-gallery" class="btn btn-secondary">Save to Gallery</button>
+                    <button id="btn-download" class="btn btn-secondary">Download</button>
+                    <button id="btn-new-game" class="btn btn-primary">New Game</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gallery Screen -->
+        <div id="screen-gallery" class="screen">
+            <div class="gallery-container">
+                <div class="gallery-header">
+                    <h2>Fursona Gallery</h2>
+                    <button id="btn-back-gallery" class="btn btn-secondary">Back</button>
+                </div>
+
+                <div id="gallery-grid" class="gallery-grid">
+                    <!-- Gallery items will be inserted here -->
+                </div>
+
+                <div id="gallery-loading" class="gallery-loading hidden">
+                    <div class="spinner"></div>
+                    <p>Loading...</p>
+                </div>
+
+                <div id="gallery-empty" class="gallery-empty hidden">
+                    <p>No fursonas yet! Create one in a game.</p>
+                </div>
+
+                <div class="gallery-pagination">
+                    <button id="btn-prev-page" class="btn btn-small" disabled>Previous</button>
+                    <span id="page-info">Page 1</span>
+                    <button id="btn-next-page" class="btn btn-small" disabled>Next</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gallery Detail Modal -->
+        <div id="gallery-modal" class="modal hidden">
+            <div class="modal-content">
+                <button id="btn-close-modal" class="modal-close">&times;</button>
+                <div class="modal-tabs">
+                    <button class="modal-tab-btn active" data-tab="raw">Raw</button>
+                    <button class="modal-tab-btn" data-tab="ai">AI Version</button>
+                </div>
+                <div class="modal-image-container">
+                    <img id="modal-image" src="" alt="Fursona">
+                </div>
+                <div class="modal-actions">
+                    <button id="btn-modal-download" class="btn btn-secondary">Download</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast-container"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/utils/CanvasUtils.js"></script>
+    <script src="js/network/NetworkManager.js"></script>
+    <script src="js/ui/DrawingCanvas.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
