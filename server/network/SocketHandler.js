@@ -23,6 +23,9 @@ class SocketHandler {
             socket.on('drawing:submit', (data) => this.handleDrawingSubmit(socket, data));
             socket.on('drawing:requestHints', (data) => this.handleRequestHints(socket, data));
 
+            // Style events
+            socket.on('style:submit', (data) => this.handleStyleSubmit(socket, data));
+
             // AI events
             socket.on('ai:generate', () => this.handleAIGenerate(socket));
 
@@ -204,10 +207,13 @@ class SocketHandler {
         const result = lobby.submitDrawing(socket.id, bodyPart, canvasData, hintData);
 
         if (result.success) {
+            const player = lobby.getPlayer(socket.id);
+
             // Notify all players someone submitted
             this.emitToLobby(lobby.inviteCode, 'game:playerSubmitted', {
-                playerId: lobby.getPlayer(socket.id).id,
-                bodyPart
+                playerId: player.id,
+                bodyPart,
+                playerName: result.playerName
             });
 
             // Send hints to next player if applicable
@@ -252,6 +258,21 @@ class SocketHandler {
         });
     }
 
+    handleStyleSubmit(socket, data) {
+        const lobby = this.lobbyManager.getLobbyByPlayer(socket.id);
+        if (!lobby) {
+            socket.emit('lobby:error', { message: 'Not in a lobby' });
+            return;
+        }
+
+        const { artStyle, background } = data;
+        lobby.setStyle(artStyle, background);
+
+        // Notify the player their style was set
+        socket.emit('style:confirmed', { artStyle, background });
+        console.log(`Style set for lobby ${lobby.inviteCode}: ${artStyle}, ${background}`);
+    }
+
     triggerReveal(lobby) {
         lobby.transitionToReveal();
 
@@ -261,9 +282,10 @@ class SocketHandler {
             lobby.timer = null;
         }
 
-        // Send all drawings to everyone
+        // Send all drawings to everyone with artist credits
         this.emitToLobby(lobby.inviteCode, 'game:reveal', {
-            drawings: lobby.getDrawings()
+            drawings: lobby.getDrawings(),
+            artistCredits: lobby.getArtistCredits()
         });
 
         console.log(`Reveal triggered for lobby: ${lobby.inviteCode}`);
@@ -294,10 +316,12 @@ class SocketHandler {
 
         try {
             const drawings = lobby.getDrawings();
+            const styleInfo = lobby.getStyleInfo();
             const aiImage = await this.aiComposer.composeFursona(
                 drawings.head,
                 drawings.torso,
-                drawings.legs
+                drawings.legs,
+                styleInfo
             );
 
             // Cache the result

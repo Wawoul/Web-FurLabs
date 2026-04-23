@@ -12,7 +12,7 @@ class AIComposer {
     /**
      * Compose a cohesive fursona from three body parts
      */
-    async composeFursona(headData, torsoData, legsData) {
+    async composeFursona(headData, torsoData, legsData, styleInfo = {}) {
         // Remove data URL prefix if present
         const cleanBase64 = (data) => {
             if (data && data.includes(',')) {
@@ -24,6 +24,10 @@ class AIComposer {
         const head = cleanBase64(headData);
         const torso = cleanBase64(torsoData);
         const legs = cleanBase64(legsData);
+
+        // Store style info for prompt building
+        this.currentStyle = styleInfo.artStyle || 'cartoon';
+        this.currentBackground = styleInfo.background || 'simple gradient';
 
         if (this.provider === 'comfyui') {
             return await this.composeWithComfyUI(head, torso, legs);
@@ -37,74 +41,90 @@ class AIComposer {
      */
     async composeWithNanoBanana(head, torso, legs) {
         if (!this.apiKey) {
-            throw new Error('NANOBANANA_API_KEY not configured');
+            throw new Error('NANOBANANA_API_KEY not configured. Add your Google AI API key to .env');
         }
 
         const prompt = this.buildPrompt();
 
-        try {
-            const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${this.apiKey}`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: prompt },
-                                {
-                                    inline_data: {
-                                        mime_type: 'image/png',
-                                        data: head
-                                    }
-                                },
-                                {
-                                    inline_data: {
-                                        mime_type: 'image/png',
-                                        data: torso
-                                    }
-                                },
-                                {
-                                    inline_data: {
-                                        mime_type: 'image/png',
-                                        data: legs
-                                    }
-                                }
-                            ]
-                        }],
-                        generationConfig: {
-                            responseModalities: ['TEXT', 'IMAGE'],
-                            responseMimeType: 'text/plain'
-                        }
-                    })
-                }
-            );
+        // Try different model endpoints
+        const models = [
+            'gemini-2.0-flash-exp',
+            'gemini-1.5-pro',
+            'gemini-1.5-flash'
+        ];
 
-            if (!response.ok) {
-                const error = await response.text();
-                throw new Error(`API error: ${response.status} - ${error}`);
+        let lastError = null;
+
+        for (const model of models) {
+            try {
+                return await this.tryGenerateWithModel(model, prompt, head, torso, legs);
+            } catch (error) {
+                console.log(`Model ${model} failed:`, error.message);
+                lastError = error;
             }
-
-            const result = await response.json();
-
-            // Extract image from response
-            const imagePart = result.candidates?.[0]?.content?.parts?.find(
-                p => p.inlineData || p.inline_data
-            );
-
-            if (imagePart) {
-                const data = imagePart.inlineData || imagePart.inline_data;
-                return `data:${data.mimeType || data.mime_type || 'image/png'};base64,${data.data}`;
-            }
-
-            throw new Error('No image in response');
-
-        } catch (error) {
-            console.error('Nano Banana Pro error:', error);
-            throw error;
         }
+
+        throw lastError || new Error('All AI models failed');
+    }
+
+    async tryGenerateWithModel(model, prompt, head, torso, legs) {
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            {
+                                inline_data: {
+                                    mime_type: 'image/png',
+                                    data: head
+                                }
+                            },
+                            {
+                                inline_data: {
+                                    mime_type: 'image/png',
+                                    data: torso
+                                }
+                            },
+                            {
+                                inline_data: {
+                                    mime_type: 'image/png',
+                                    data: legs
+                                }
+                            }
+                        ]
+                    }],
+                    generationConfig: {
+                        responseModalities: ['IMAGE', 'TEXT']
+                    }
+                })
+            }
+        );
+
+        if (!response.ok) {
+            const error = await response.text();
+            throw new Error(`API error: ${response.status} - ${error}`);
+        }
+
+        const result = await response.json();
+
+        // Extract image from response
+        const imagePart = result.candidates?.[0]?.content?.parts?.find(
+            p => p.inlineData || p.inline_data
+        );
+
+        if (imagePart) {
+            const data = imagePart.inlineData || imagePart.inline_data;
+            return `data:${data.mimeType || data.mime_type || 'image/png'};base64,${data.data}`;
+        }
+
+        // If no image, the model may not support image generation
+        throw new Error('Model does not support image generation');
     }
 
     /**
@@ -143,24 +163,26 @@ class AIComposer {
      * Build the AI prompt for fursona composition
      */
     buildPrompt() {
-        return `You are an AI artist specializing in furry character art.
+        const artStyle = this.currentStyle || 'cartoon';
+        const background = this.currentBackground || 'simple gradient';
+
+        return `Make this Gartic Phone / Exquisite Corpse collaborative drawing into a ${artStyle} style anthro furry character ${background}.
 
 I have three hand-drawn images representing different parts of a furry character (fursona):
 1. The HEAD (first image)
 2. The TORSO/body (second image)
 3. The LEGS/feet (third image)
 
-These were drawn by different artists in an "Exquisite Corpse" collaborative art game. Each artist could only see a small hint of where to connect their section.
+These were drawn by different people who could only see small hints of where to connect their sections.
 
-Please create a SINGLE cohesive furry character illustration that:
-- Combines all three body sections into one unified character
-- Maintains the artistic style, colors, and details from each original drawing
-- Creates smooth, natural transitions between the body sections
-- Keeps the hand-drawn, sketchy aesthetic
-- Shows the full character in a standing pose
-- Uses a simple, clean background
+IMPORTANT: Keep the result as close to the original drawings as possible while:
+- Combining all three body sections into one unified ${artStyle} style character
+- Maintaining the colors, features, and details from each original drawing
+- Creating smooth, natural transitions between the body sections
+- Placing the character ${background}
+- Showing the full character in a standing or dynamic pose
 
-The final result should look like a complete fursona character design that honors all three artists' contributions while appearing as a unified whole.`;
+The final result should honor all three artists' contributions while appearing as a cohesive ${artStyle} anthro furry character.`;
     }
 
     /**

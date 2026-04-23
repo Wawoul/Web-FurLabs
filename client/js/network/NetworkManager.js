@@ -76,6 +76,11 @@ class NetworkManager {
         this.emit('lobby:start', {});
     }
 
+    // Style actions
+    submitStyle(artStyle, background) {
+        this.emit('style:submit', { artStyle, background });
+    }
+
     // Drawing actions
     submitDrawing(bodyPart, canvasData, hintData) {
         this.emit('drawing:submit', { bodyPart, canvasData, hintData });

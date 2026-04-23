@@ -33,6 +33,17 @@ class Lobby {
         // AI generated version
         this.aiVersion = null;
 
+        // Style choices for AI generation
+        this.artStyle = 'cartoon';
+        this.background = 'simple gradient';
+
+        // Track who drew what
+        this.artistCredits = {
+            [BODY_PARTS.HEAD]: null,
+            [BODY_PARTS.TORSO]: null,
+            [BODY_PARTS.LEGS]: null
+        };
+
         // Add host
         this.addPlayer(hostSocketId, hostName, true);
     }
@@ -145,6 +156,9 @@ class Lobby {
         // Store the drawing
         this.drawings[bodyPart] = canvasData;
 
+        // Track who drew this part
+        this.artistCredits[bodyPart] = player.displayName;
+
         // Store hint data for adjacent parts
         if (hintData) {
             if (bodyPart === BODY_PARTS.HEAD && hintData.bottom) {
@@ -160,7 +174,8 @@ class Lobby {
 
         return {
             success: true,
-            allComplete: this.allDrawingsComplete()
+            allComplete: this.allDrawingsComplete(),
+            playerName: player.displayName
         };
     }
 
@@ -174,12 +189,28 @@ class Lobby {
         return this.hints[bodyPart] || {};
     }
 
+    getArtistCredits() {
+        return this.artistCredits;
+    }
+
     getDrawings() {
         return this.drawings;
     }
 
     setAIVersion(imageData) {
         this.aiVersion = imageData;
+    }
+
+    setStyle(artStyle, background) {
+        this.artStyle = artStyle || 'cartoon';
+        this.background = background || 'simple gradient';
+    }
+
+    getStyleInfo() {
+        return {
+            artStyle: this.artStyle,
+            background: this.background
+        };
     }
 
     transitionToReveal() {

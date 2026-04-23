@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fur-Labs - Collaborative Fursona Creator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -89,82 +92,194 @@
             </div>
         </div>
 
-        <!-- Drawing Screen -->
-        <div id="screen-drawing" class="screen">
-            <div class="drawing-container">
-                <div class="drawing-header">
-                    <h2 id="drawing-part-label">Draw the Head</h2>
-                    <div class="timer" id="timer">3:00</div>
-                </div>
+        <!-- Style Selection Screen -->
+        <div id="screen-style" class="screen">
+            <div class="panel style-panel">
+                <h2>Choose Your Style!</h2>
+                <p class="style-intro">Pick an art style and background for your fursona</p>
 
-                <div class="canvas-wrapper">
-                    <canvas id="drawing-canvas" width="800" height="400"></canvas>
-                    <div id="hint-overlay-top" class="hint-overlay top"></div>
-                    <div id="hint-overlay-bottom" class="hint-overlay bottom"></div>
-                </div>
-
-                <div class="tool-palette">
-                    <div class="tool-group">
-                        <button class="tool-btn active" data-tool="brush" title="Brush">
-                            <span class="tool-icon">&#9998;</span>
+                <div class="style-section">
+                    <h3>Art Style</h3>
+                    <div class="style-options" id="style-options">
+                        <button class="style-option active" data-style="cartoon">
+                            <span class="style-icon">🎨</span>
+                            <span class="style-name">Cartoon</span>
                         </button>
-                        <button class="tool-btn" data-tool="eraser" title="Eraser">
-                            <span class="tool-icon">&#9003;</span>
+                        <button class="style-option" data-style="pixel-art">
+                            <span class="style-icon">👾</span>
+                            <span class="style-name">Pixel Art</span>
                         </button>
-                        <button class="tool-btn" data-tool="fill" title="Fill">
-                            <span class="tool-icon">&#9726;</span>
+                        <button class="style-option" data-style="cell-shaded">
+                            <span class="style-icon">✨</span>
+                            <span class="style-name">Cell Shaded</span>
+                        </button>
+                        <button class="style-option" data-style="watercolor">
+                            <span class="style-icon">🖌️</span>
+                            <span class="style-name">Watercolor</span>
+                        </button>
+                        <button class="style-option" data-style="anime">
+                            <span class="style-icon">⭐</span>
+                            <span class="style-name">Anime</span>
+                        </button>
+                        <button class="style-option" data-style="sketch">
+                            <span class="style-icon">✏️</span>
+                            <span class="style-name">Sketch</span>
                         </button>
                     </div>
+                </div>
 
-                    <div class="tool-group">
-                        <input type="color" id="color-picker" value="#000000" title="Color">
-                        <div class="preset-colors">
-                            <button class="color-preset" data-color="#000000" style="background:#000000"></button>
-                            <button class="color-preset" data-color="#FFFFFF" style="background:#FFFFFF"></button>
-                            <button class="color-preset" data-color="#FF6B6B" style="background:#FF6B6B"></button>
-                            <button class="color-preset" data-color="#4ECDC4" style="background:#4ECDC4"></button>
-                            <button class="color-preset" data-color="#FFE66D" style="background:#FFE66D"></button>
-                            <button class="color-preset" data-color="#95E1D3" style="background:#95E1D3"></button>
-                            <button class="color-preset" data-color="#F38181" style="background:#F38181"></button>
-                            <button class="color-preset" data-color="#AA96DA" style="background:#AA96DA"></button>
+                <div class="style-section">
+                    <h3>Background</h3>
+                    <div class="style-options" id="bg-options">
+                        <button class="style-option active" data-bg="simple gradient">
+                            <span class="style-icon">🌈</span>
+                            <span class="style-name">Gradient</span>
+                        </button>
+                        <button class="style-option" data-bg="at the beach">
+                            <span class="style-icon">🏖️</span>
+                            <span class="style-name">Beach</span>
+                        </button>
+                        <button class="style-option" data-bg="in a forest">
+                            <span class="style-icon">🌲</span>
+                            <span class="style-name">Forest</span>
+                        </button>
+                        <button class="style-option" data-bg="on the moon">
+                            <span class="style-icon">🌙</span>
+                            <span class="style-name">Moon</span>
+                        </button>
+                        <button class="style-option" data-bg="in a city">
+                            <span class="style-icon">🏙️</span>
+                            <span class="style-name">City</span>
+                        </button>
+                        <button class="style-option" data-bg="in space">
+                            <span class="style-icon">🚀</span>
+                            <span class="style-name">Space</span>
+                        </button>
+                        <button class="style-option" data-bg="at a party">
+                            <span class="style-icon">🎉</span>
+                            <span class="style-name">Party</span>
+                        </button>
+                        <button class="style-option" data-bg="in a cozy room">
+                            <span class="style-icon">🏠</span>
+                            <span class="style-name">Cozy Room</span>
+                        </button>
+                    </div>
+                </div>
+
+                <button id="btn-confirm-style" class="btn btn-primary btn-large">Start Drawing!</button>
+            </div>
+        </div>
+
+        <!-- Drawing Screen -->
+        <div id="screen-drawing" class="screen">
+            <div class="drawing-layout">
+                <!-- Player Sidebar -->
+                <div class="player-sidebar">
+                    <h3>Players</h3>
+                    <ul id="drawing-player-list"></ul>
+                    <div class="waiting-indicator" id="waiting-indicator">
+                        <div class="spinner-small"></div>
+                        <span>Waiting for submissions...</span>
+                    </div>
+                </div>
+
+                <div class="drawing-container">
+                    <div class="drawing-header">
+                        <h2 id="drawing-part-label">Draw the Head</h2>
+                        <div class="timer" id="timer">3:00</div>
+                    </div>
+
+                    <div class="canvas-wrapper">
+                        <canvas id="drawing-canvas" width="800" height="400"></canvas>
+                        <div id="hint-overlay-top" class="hint-overlay top"></div>
+                        <div id="hint-overlay-bottom" class="hint-overlay bottom"></div>
+                    </div>
+
+                    <div class="tool-palette">
+                        <div class="tool-group">
+                            <button class="tool-btn active" data-tool="brush" title="Brush">
+                                <span class="tool-icon">&#9998;</span>
+                            </button>
+                            <button class="tool-btn" data-tool="eraser" title="Eraser">
+                                <span class="tool-icon">&#9003;</span>
+                            </button>
+                            <button class="tool-btn" data-tool="fill" title="Fill">
+                                <span class="tool-icon">&#9726;</span>
+                            </button>
+                        </div>
+
+                        <div class="tool-group">
+                            <input type="color" id="color-picker" value="#000000" title="Color">
+                            <div class="preset-colors">
+                                <button class="color-preset" data-color="#000000" style="background:#000000"></button>
+                                <button class="color-preset" data-color="#FFFFFF" style="background:#FFFFFF"></button>
+                                <button class="color-preset" data-color="#FF6B6B" style="background:#FF6B6B"></button>
+                                <button class="color-preset" data-color="#4ECDC4" style="background:#4ECDC4"></button>
+                                <button class="color-preset" data-color="#FFE66D" style="background:#FFE66D"></button>
+                                <button class="color-preset" data-color="#95E1D3" style="background:#95E1D3"></button>
+                                <button class="color-preset" data-color="#F38181" style="background:#F38181"></button>
+                                <button class="color-preset" data-color="#AA96DA" style="background:#AA96DA"></button>
+                            </div>
+                        </div>
+
+                        <div class="tool-group">
+                            <label>Size: <span id="size-value">8</span></label>
+                            <input type="range" id="brush-size" min="1" max="50" value="8">
+                        </div>
+
+                        <div class="tool-group">
+                            <button id="btn-undo" class="btn btn-small">Undo</button>
+                            <button id="btn-clear" class="btn btn-small">Clear</button>
                         </div>
                     </div>
 
-                    <div class="tool-group">
-                        <label>Size: <span id="size-value">8</span></label>
-                        <input type="range" id="brush-size" min="1" max="50" value="8">
+                    <div class="submit-section">
+                        <button id="btn-submit-drawing" class="btn btn-primary btn-large">Submit Drawing</button>
                     </div>
-
-                    <div class="tool-group">
-                        <button id="btn-undo" class="btn btn-small">Undo</button>
-                        <button id="btn-clear" class="btn btn-small">Clear</button>
-                    </div>
-                </div>
-
-                <div class="submit-section">
-                    <button id="btn-submit-drawing" class="btn btn-primary btn-large">Submit Drawing</button>
                 </div>
             </div>
         </div>
 
         <!-- Reveal Screen -->
         <div id="screen-reveal" class="screen">
-            <div class="reveal-container">
-                <h2>Your Creation!</h2>
+            <div class="reveal-scroll-container">
+                <h2>Scroll to Reveal Your Creation!</h2>
 
-                <div class="reveal-tabs">
-                    <button class="tab-btn active" data-tab="raw">Raw Combined</button>
-                    <button class="tab-btn" data-tab="ai">AI Lab Version</button>
+                <!-- Individual Parts with Credits -->
+                <div class="reveal-parts">
+                    <div class="reveal-part hidden" id="reveal-head">
+                        <div class="part-label">HEAD</div>
+                        <img id="reveal-head-img" src="" alt="Head">
+                        <div class="artist-credit">Drawn by <span id="artist-head">???</span></div>
+                    </div>
+
+                    <div class="reveal-part hidden" id="reveal-torso">
+                        <div class="part-label">TORSO</div>
+                        <img id="reveal-torso-img" src="" alt="Torso">
+                        <div class="artist-credit">Drawn by <span id="artist-torso">???</span></div>
+                    </div>
+
+                    <div class="reveal-part hidden" id="reveal-legs">
+                        <div class="part-label">LEGS</div>
+                        <img id="reveal-legs-img" src="" alt="Legs">
+                        <div class="artist-credit">Drawn by <span id="artist-legs">???</span></div>
+                    </div>
                 </div>
 
-                <div class="reveal-content">
-                    <div id="raw-reveal" class="reveal-tab active">
-                        <canvas id="combined-canvas" width="800" height="1200"></canvas>
+                <!-- Combined Result -->
+                <div class="reveal-final hidden" id="reveal-final">
+                    <h3>The Complete Fursona!</h3>
+                    <canvas id="combined-canvas" width="800" height="1200"></canvas>
+
+                    <div class="reveal-tabs">
+                        <button class="tab-btn active" data-tab="raw">Raw Combined</button>
+                        <button class="tab-btn" data-tab="ai">AI Lab Version</button>
                     </div>
-                    <div id="ai-reveal" class="reveal-tab">
+
+                    <div id="ai-section" class="ai-section hidden">
                         <div id="ai-placeholder">
                             <button id="btn-generate-ai" class="btn btn-primary">Generate AI Lab Version</button>
-                            <p class="ai-note">Uses Nano Banana Pro to create a cohesive character</p>
+                            <p class="ai-note">Uses AI to create a cohesive character</p>
                         </div>
                         <div id="ai-loading" class="hidden">
                             <div class="spinner"></div>
@@ -172,12 +287,12 @@
                         </div>
                         <img id="ai-result" class="hidden" alt="AI Generated Fursona">
                     </div>
-                </div>
 
-                <div class="reveal-actions">
-                    <button id="btn-save-gallery" class="btn btn-secondary">Save to Gallery</button>
-                    <button id="btn-download" class="btn btn-secondary">Download</button>
-                    <button id="btn-new-game" class="btn btn-primary">New Game</button>
+                    <div class="reveal-actions">
+                        <button id="btn-save-gallery" class="btn btn-secondary">Save to Gallery</button>
+                        <button id="btn-download" class="btn btn-secondary">Download</button>
+                        <button id="btn-new-game" class="btn btn-primary">New Game</button>
+                    </div>
                 </div>
             </div>
         </div>
