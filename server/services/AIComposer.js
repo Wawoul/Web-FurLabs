@@ -1,175 +1,182 @@
 /**
  * AI Composer Service
- * Integrates with Nano Banana Pro (Gemini 3.0 Pro Image) or ComfyUI
+ * Integrates with kie.ai API (Nano Banana 2) or ComfyUI
  */
 class AIComposer {
     constructor() {
-        this.provider = process.env.AI_PROVIDER || 'nanobanana';
-        this.apiKey = process.env.NANOBANANA_API_KEY;
+        this.provider = process.env.AI_PROVIDER || 'kieai';
+        this.apiKey = process.env.KIE_API_KEY || process.env.NANOBANANA_API_KEY;
         this.comfyuiUrl = process.env.COMFYUI_URL || 'http://localhost:8188';
+        this.kieApiUrl = 'https://api.kie.ai/api/v1/jobs';
     }
 
     /**
      * Compose a cohesive fursona from three body parts
      */
     async composeFursona(headData, torsoData, legsData, styleInfo = {}) {
-        // Remove data URL prefix if present
-        const cleanBase64 = (data) => {
-            if (data && data.includes(',')) {
-                return data.split(',')[1];
-            }
-            return data;
-        };
-
-        const head = cleanBase64(headData);
-        const torso = cleanBase64(torsoData);
-        const legs = cleanBase64(legsData);
-
         // Store style info for prompt building
         this.currentStyle = styleInfo.artStyle || 'cartoon';
         this.currentBackground = styleInfo.background || 'simple gradient';
 
         if (this.provider === 'comfyui') {
-            return await this.composeWithComfyUI(head, torso, legs);
+            return await this.composeWithComfyUI(headData, torsoData, legsData);
         } else {
-            return await this.composeWithNanoBanana(head, torso, legs);
+            return await this.composeWithKieAI(headData, torsoData, legsData);
         }
     }
 
     /**
-     * Compose using Nano Banana Pro (Gemini 3.0 Pro Image)
+     * Compose using kie.ai API (Nano Banana 2)
+     * Docs: https://docs.kie.ai/market/google/nanobanana2
      */
-    async composeWithNanoBanana(head, torso, legs) {
+    async composeWithKieAI(head, torso, legs) {
         if (!this.apiKey) {
-            throw new Error('NANOBANANA_API_KEY not configured. Add your Google AI API key to .env');
+            throw new Error('KIE_API_KEY not configured. Add your kie.ai API key to .env');
         }
 
         const prompt = this.buildPrompt();
 
-        // Use Nano Banana Pro (Gemini 3 Pro Image) as the primary model
-        const models = [
-            'gemini-3-pro-image-preview',  // Primary: Nano Banana Pro (Gemini 3 Pro Image)
-            'gemini-2.5-flash-image'       // Fallback: Nano Banana (Gemini 2.5 Flash Image)
-        ];
+        // Ensure images have proper data URL format
+        const formatDataUrl = (data) => {
+            if (!data) return null;
+            if (data.startsWith('data:')) return data;
+            return `data:image/png;base64,${data}`;
+        };
 
-        let lastError = null;
+        const images = [
+            formatDataUrl(head),
+            formatDataUrl(torso),
+            formatDataUrl(legs)
+        ].filter(Boolean);
 
-        for (const model of models) {
-            try {
-                return await this.tryGenerateWithModel(model, prompt, head, torso, legs);
-            } catch (error) {
-                console.log(`Model ${model} failed:`, error.message);
-                lastError = error;
+        try {
+            // Create task
+            const createResponse = await fetch(`${this.kieApiUrl}/createTask`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.apiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'nano-banana-2',
+                    input: {
+                        prompt: prompt,
+                        image_input: images,
+                        aspect_ratio: '9:16', // Portrait orientation
+                        resolution: '1K',
+                        output_format: 'png'
+                    }
+                })
+            });
+
+            if (!createResponse.ok) {
+                const errorText = await createResponse.text();
+                throw new Error(`kie.ai API error: ${createResponse.status} - ${errorText}`);
             }
-        }
 
-        throw lastError || new Error('All AI models failed');
+            const createResult = await createResponse.json();
+
+            if (createResult.code !== 200 || !createResult.data?.taskId) {
+                throw new Error(`kie.ai task creation failed: ${createResult.msg || 'Unknown error'}`);
+            }
+
+            const taskId = createResult.data.taskId;
+            console.log(`kie.ai task created: ${taskId}`);
+
+            // Poll for result
+            const result = await this.pollKieAIResult(taskId);
+            return result;
+
+        } catch (error) {
+            console.error('kie.ai error:', error);
+            throw error;
+        }
     }
 
-    async tryGenerateWithModel(model, prompt, head, torso, legs) {
-        // Try v1beta first, then v1 if that fails
-        const apiVersions = ['v1beta', 'v1'];
-        let lastError = null;
+    /**
+     * Poll kie.ai for task result
+     * Docs: https://docs.kie.ai/market/common/get-task-detail
+     */
+    async pollKieAIResult(taskId, maxAttempts = 120, intervalMs = 2000) {
+        for (let i = 0; i < maxAttempts; i++) {
+            await new Promise(resolve => setTimeout(resolve, intervalMs));
 
-        for (const apiVersion of apiVersions) {
             try {
                 const response = await fetch(
-                    `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${this.apiKey}`,
+                    `${this.kieApiUrl}/recordInfo?taskId=${taskId}`,
                     {
-                        method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            contents: [{
-                                parts: [
-                                    { text: prompt },
-                                    {
-                                        inline_data: {
-                                            mime_type: 'image/png',
-                                            data: head
-                                        }
-                                    },
-                                    {
-                                        inline_data: {
-                                            mime_type: 'image/png',
-                                            data: torso
-                                        }
-                                    },
-                                    {
-                                        inline_data: {
-                                            mime_type: 'image/png',
-                                            data: legs
-                                        }
-                                    }
-                                ]
-                            }]
-                        })
+                            'Authorization': `Bearer ${this.apiKey}`
+                        }
                     }
                 );
 
                 if (!response.ok) {
-                    const error = await response.text();
-                    lastError = new Error(`API error (${apiVersion}): ${response.status} - ${error}`);
+                    console.log(`Poll attempt ${i + 1}: HTTP ${response.status}`);
                     continue;
                 }
 
                 const result = await response.json();
-                return this.extractImageFromResponse(result);
-            } catch (err) {
-                lastError = err;
+
+                if (result.code !== 200) {
+                    console.log(`Poll attempt ${i + 1}: ${result.msg}`);
+                    continue;
+                }
+
+                const state = result.data?.state;
+
+                if (state === 'completed' || state === 'success') {
+                    // Extract result image URL
+                    const resultJson = result.data?.resultJson;
+                    if (resultJson) {
+                        const parsed = typeof resultJson === 'string'
+                            ? JSON.parse(resultJson)
+                            : resultJson;
+
+                        // Get the output image URL
+                        const imageUrl = parsed.output || parsed.image || parsed.url ||
+                                        (parsed.images && parsed.images[0]);
+
+                        if (imageUrl) {
+                            // Fetch and convert to base64
+                            return await this.fetchImageAsBase64(imageUrl);
+                        }
+                    }
+                    throw new Error('No image in result');
+                }
+
+                if (state === 'failed' || state === 'error') {
+                    throw new Error(`Generation failed: ${result.data?.failMsg || 'Unknown error'}`);
+                }
+
+                // Still processing, continue polling
+                console.log(`Poll attempt ${i + 1}: state=${state}`);
+
+            } catch (error) {
+                if (error.message.includes('Generation failed')) {
+                    throw error;
+                }
+                console.log(`Poll attempt ${i + 1} error:`, error.message);
             }
         }
 
-        throw lastError || new Error(`Model ${model} failed on all API versions`);
-    }
-
-    extractImageFromResponse(result) {
-
-        // Extract image from response
-        const imagePart = result.candidates?.[0]?.content?.parts?.find(
-            p => p.inlineData || p.inline_data
-        );
-
-        if (imagePart) {
-            const data = imagePart.inlineData || imagePart.inline_data;
-            return `data:${data.mimeType || data.mime_type || 'image/png'};base64,${data.data}`;
-        }
-
-        // If no image, the model may not support image generation
-        throw new Error('Model does not support image generation');
+        throw new Error('kie.ai generation timed out');
     }
 
     /**
-     * Compose using ComfyUI (self-hosted)
+     * Fetch an image URL and convert to base64 data URL
      */
-    async composeWithComfyUI(head, torso, legs) {
-        try {
-            // ComfyUI workflow for image composition
-            // This is a simplified version - actual workflow would be more complex
-            const workflow = this.buildComfyUIWorkflow(head, torso, legs);
-
-            // Queue the prompt
-            const queueResponse = await fetch(`${this.comfyuiUrl}/prompt`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: workflow })
-            });
-
-            if (!queueResponse.ok) {
-                throw new Error('ComfyUI queue failed');
-            }
-
-            const { prompt_id } = await queueResponse.json();
-
-            // Poll for result
-            const result = await this.pollComfyUIResult(prompt_id);
-            return result;
-
-        } catch (error) {
-            console.error('ComfyUI error:', error);
-            throw error;
+    async fetchImageAsBase64(url) {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.status}`);
         }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString('base64');
+        const contentType = response.headers.get('content-type') || 'image/png';
+
+        return `data:${contentType};base64,${base64}`;
     }
 
     /**
@@ -189,12 +196,48 @@ CRITICAL REQUIREMENTS:
     }
 
     /**
+     * Compose using ComfyUI (self-hosted)
+     */
+    async composeWithComfyUI(head, torso, legs) {
+        // Remove data URL prefix if present
+        const cleanBase64 = (data) => {
+            if (data && data.includes(',')) {
+                return data.split(',')[1];
+            }
+            return data;
+        };
+
+        const headClean = cleanBase64(head);
+        const torsoClean = cleanBase64(torso);
+        const legsClean = cleanBase64(legs);
+
+        try {
+            const workflow = this.buildComfyUIWorkflow(headClean, torsoClean, legsClean);
+
+            const queueResponse = await fetch(`${this.comfyuiUrl}/prompt`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: workflow })
+            });
+
+            if (!queueResponse.ok) {
+                throw new Error('ComfyUI queue failed');
+            }
+
+            const { prompt_id } = await queueResponse.json();
+            const result = await this.pollComfyUIResult(prompt_id);
+            return result;
+
+        } catch (error) {
+            console.error('ComfyUI error:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Build ComfyUI workflow for image composition
-     * This is a template - actual workflow depends on installed nodes
      */
     buildComfyUIWorkflow(head, torso, legs) {
-        // Simplified workflow structure
-        // In practice, this would use IPAdapter, ControlNet, etc.
         return {
             "1": {
                 "class_type": "LoadImageFromBase64",
@@ -279,11 +322,9 @@ CRITICAL REQUIREMENTS:
             const promptHistory = history[promptId];
 
             if (promptHistory?.outputs) {
-                // Find the output image
                 for (const nodeOutput of Object.values(promptHistory.outputs)) {
                     if (nodeOutput.images) {
                         const image = nodeOutput.images[0];
-                        // Fetch the image
                         const imageResponse = await fetch(
                             `${this.comfyuiUrl}/view?filename=${image.filename}&subfolder=${image.subfolder || ''}&type=${image.type || 'output'}`
                         );
