@@ -48,49 +48,65 @@ const CanvasUtils = {
     /**
      * Combine three body part images vertically with overlap
      * The hint areas (10% of each drawing) overlap to create seamless transitions
+     * Like Gartic Phone: bottom of head overlaps with top of torso, etc.
      */
     async combineDrawings(headData, torsoData, legsData, targetCanvas) {
         const ctx = targetCanvas.getContext('2d');
 
+        // Clear canvas with white background
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, targetCanvas.width, targetCanvas.height);
 
         try {
             // Each source drawing is 800x400 (2:1 ratio)
-            // We need to fit 3 drawings with overlap
-            // Hint overlap is 10% of drawing height (40px)
             const sourceWidth = 800;
             const sourceHeight = 400;
-            const overlapAmount = sourceHeight * 0.1; // 40px overlap
 
-            // Calculate drawing positions with overlap
-            // Total height = 3 * 400 - 2 * 40 = 1120px (fits in 1200px canvas)
+            // Overlap amount: 10% of drawing height (40px at source size)
+            // This is where the "hint" areas connect
+            const overlapAmount = sourceHeight * 0.1;
+
+            // Scale factor based on canvas width
             const scaleFactor = targetCanvas.width / sourceWidth;
             const scaledPartHeight = sourceHeight * scaleFactor;
             const scaledOverlap = overlapAmount * scaleFactor;
 
-            // Position 1: Head at top
-            let currentY = 0;
+            // Total combined height with overlap: 3*400 - 2*40 = 1120px
+            const totalHeight = (scaledPartHeight * 3) - (scaledOverlap * 2);
+
+            // Center vertically in canvas (1200px canvas, 1120px content = 40px padding top/bottom)
+            const startY = (targetCanvas.height - totalHeight) / 2;
+
+            // Position 1: Head at top (centered)
+            let currentY = startY;
             if (headData) {
                 const headImg = await this.loadImage(headData);
                 ctx.drawImage(headImg, 0, currentY, targetCanvas.width, scaledPartHeight);
             }
 
-            // Position 2: Torso overlapping with head's bottom hint
-            currentY = scaledPartHeight - scaledOverlap;
+            // Position 2: Torso - starts where head's hint area begins (40px overlap)
+            // The top of torso covers the bottom 10% of head
+            currentY = startY + scaledPartHeight - scaledOverlap;
             if (torsoData) {
                 const torsoImg = await this.loadImage(torsoData);
                 ctx.drawImage(torsoImg, 0, currentY, targetCanvas.width, scaledPartHeight);
             }
 
-            // Position 3: Legs overlapping with torso's bottom hint
-            currentY = (scaledPartHeight - scaledOverlap) * 2;
+            // Position 3: Legs - starts where torso's hint area begins (40px overlap)
+            // The top of legs covers the bottom 10% of torso
+            currentY = startY + (scaledPartHeight - scaledOverlap) * 2;
             if (legsData) {
                 const legsImg = await this.loadImage(legsData);
                 ctx.drawImage(legsImg, 0, currentY, targetCanvas.width, scaledPartHeight);
             }
 
-            // No dividing lines - seamless connection!
+            // Images now overlap by 10% (40px) creating seamless connections
+            console.log('Combined drawings with overlap:', {
+                scaledPartHeight,
+                scaledOverlap,
+                totalHeight,
+                startY
+            });
 
         } catch (error) {
             console.error('Error combining drawings:', error);

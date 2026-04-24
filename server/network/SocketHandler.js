@@ -387,21 +387,26 @@ class SocketHandler {
             lobby.prepareForNewGame();
         }
 
-        // Mark this player as ready for new game
-        lobby.setPlayerReady(socket.id, true);
+        // Only auto-ready the host, non-host players need to ready up manually
+        if (player.isHost) {
+            lobby.setPlayerReady(socket.id, true);
+        }
 
         // Send this player back to waiting room
         socket.emit('lobby:returnToWaiting', {
-            lobby: lobby.serialize()
+            lobby: lobby.serialize(),
+            autoReady: player.isHost  // Tell client if they should be auto-readied
         });
 
-        // Notify others about the ready update (they might still be in reveal)
-        socket.to(`lobby:${lobby.inviteCode}`).emit('lobby:readyUpdate', {
-            playerId: player.id,
-            isReady: true
-        });
+        // Notify others about the state change (they might still be in reveal)
+        if (player.isHost) {
+            socket.to(`lobby:${lobby.inviteCode}`).emit('lobby:readyUpdate', {
+                playerId: player.id,
+                isReady: true
+            });
+        }
 
-        console.log(`${player.displayName} ready for new game in lobby: ${lobby.inviteCode}`);
+        console.log(`${player.displayName} returned to waiting room in lobby: ${lobby.inviteCode}`);
     }
 
     handleDisconnect(socket) {

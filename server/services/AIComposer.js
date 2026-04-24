@@ -47,12 +47,14 @@ class AIComposer {
         const prompt = this.buildPrompt();
 
         // Try different model endpoints that support image generation
-        // Updated models for 2026 - Gemini image generation models
+        // Updated models for 2026 - Nano Banana / Gemini image generation models
+        // See: https://ai.google.dev/gemini-api/docs/image-generation
         const models = [
-            'gemini-2.0-flash-preview-image-generation',
-            'gemini-2.0-flash-exp-image-generation',
-            'gemini-1.5-flash-002',
-            'gemini-1.5-pro-002'
+            'gemini-2.0-flash-exp',              // Gemini 2.0 Flash with image output
+            'gemini-2.0-flash-preview-image-generation', // Image generation preview
+            'gemini-2.5-flash-image',            // Nano Banana
+            'gemini-3.1-flash-image-preview',    // Nano Banana 2
+            'gemini-3-pro-image-preview'         // Nano Banana Pro
         ];
 
         let lastError = null;
@@ -70,50 +72,68 @@ class AIComposer {
     }
 
     async tryGenerateWithModel(model, prompt, head, torso, legs) {
-        const response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: prompt },
-                            {
-                                inline_data: {
-                                    mime_type: 'image/png',
-                                    data: head
-                                }
-                            },
-                            {
-                                inline_data: {
-                                    mime_type: 'image/png',
-                                    data: torso
-                                }
-                            },
-                            {
-                                inline_data: {
-                                    mime_type: 'image/png',
-                                    data: legs
-                                }
-                            }
-                        ]
-                    }],
-                    generationConfig: {
-                        responseModalities: ['IMAGE', 'TEXT']
-                    }
-                })
-            }
-        );
+        // Try v1beta first, then v1 if that fails
+        const apiVersions = ['v1beta', 'v1'];
+        let lastError = null;
 
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`API error: ${response.status} - ${error}`);
+        for (const apiVersion of apiVersions) {
+            try {
+                const response = await fetch(
+                    `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${this.apiKey}`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [
+                                    { text: prompt },
+                                    {
+                                        inline_data: {
+                                            mime_type: 'image/png',
+                                            data: head
+                                        }
+                                    },
+                                    {
+                                        inline_data: {
+                                            mime_type: 'image/png',
+                                            data: torso
+                                        }
+                                    },
+                                    {
+                                        inline_data: {
+                                            mime_type: 'image/png',
+                                            data: legs
+                                        }
+                                    }
+                                ]
+                            }],
+                            generationConfig: {
+                                responseModalities: ['IMAGE', 'TEXT'],
+                                responseMimeType: 'image/png'
+                            }
+                        })
+                    }
+                );
+
+                if (!response.ok) {
+                    const error = await response.text();
+                    lastError = new Error(`API error (${apiVersion}): ${response.status} - ${error}`);
+                    continue;
+                }
+
+                const result = await response.json();
+                return this.extractImageFromResponse(result);
+            } catch (err) {
+                lastError = err;
+            }
         }
 
-        const result = await response.json();
+        throw lastError || new Error(`Model ${model} failed on all API versions`);
+    }
+
+    extractImageFromResponse(result) {
 
         // Extract image from response
         const imagePart = result.candidates?.[0]?.content?.parts?.find(

@@ -131,6 +131,14 @@ body::before {
     gap: 18px;
 }
 
+.version-info {
+    margin-top: 40px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
 /* ==================== BUTTONS ==================== */
 .btn {
     font-family: 'Fredoka', sans-serif;
@@ -1103,6 +1111,27 @@ body::before {
     max-height: 600px;
     border-radius: 20px;
     box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4), 0 0 30px rgba(124, 77, 255, 0.2);
+}
+
+.style-info-display {
+    margin-top: 20px;
+    padding: 12px 24px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 20px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.95rem;
+    color: var(--text-soft);
+}
+
+.style-info-display .style-label {
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.style-info-display .style-separator {
+    margin: 0 15px;
+    color: var(--text-muted);
+    opacity: 0.5;
 }
 
 .ai-actions {

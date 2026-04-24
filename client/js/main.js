@@ -198,10 +198,15 @@ class FurLabsApp {
             this.updateWaitingRoom();
             this.showScreen('waiting');
 
-            // Keep ready checkbox checked since clicking New Game marks us ready
-            document.getElementById('ready-checkbox').checked = true;
+            // Only auto-ready for host, non-host needs to ready up manually
+            const autoReady = data.autoReady || false;
+            document.getElementById('ready-checkbox').checked = autoReady;
 
-            this.showToast('Ready for new game!', 'success');
+            if (autoReady) {
+                this.showToast('Ready for new game!', 'success');
+            } else {
+                this.showToast('Returned to lobby - ready up when ready!', 'info');
+            }
         });
 
         // Legacy handler - kept for backwards compatibility
@@ -281,6 +286,10 @@ class FurLabsApp {
                 const aiResult = document.getElementById('ai-result');
                 aiResult.src = data.aiImage;
                 aiResultContainer.classList.remove('hidden');
+
+                // Display the style info
+                document.getElementById('display-art-style').textContent = this.selectedArtStyle || 'cartoon';
+                document.getElementById('display-background').textContent = this.selectedBackground || 'simple gradient';
             } else {
                 document.getElementById('ai-placeholder').classList.remove('hidden');
                 this.showToast(data.message || 'AI generation failed', 'error');
