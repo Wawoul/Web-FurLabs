@@ -103,10 +103,7 @@ class AIComposer {
                                         }
                                     }
                                 ]
-                            }],
-                            generation_config: {
-                                response_modalities: ['IMAGE', 'TEXT']
-                            }
+                            }]
                         })
                     }
                 );

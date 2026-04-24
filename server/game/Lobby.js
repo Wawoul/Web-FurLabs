@@ -8,7 +8,9 @@ class Lobby {
         this.inviteCode = inviteCode;
         this.players = new Map(); // socketId -> Player
         this.state = GAME_STATES.WAITING;
-        this.drawingTime = options.drawingTime || DEFAULTS.DRAWING_TIME;
+        // Ensure drawingTime is a valid number, otherwise use default
+        const parsedTime = parseInt(options.drawingTime);
+        this.drawingTime = (!isNaN(parsedTime) && parsedTime > 0) ? parsedTime : DEFAULTS.DRAWING_TIME;
         this.createdAt = Date.now();
         this.startedAt = null;
 

@@ -47,6 +47,8 @@ class SocketHandler {
             return;
         }
 
+        console.log(`Creating lobby with drawingTime: ${drawingTime} (type: ${typeof drawingTime})`);
+
         const result = this.lobbyManager.createLobby(socket.id, displayName.trim(), { drawingTime });
 
         if (result.success) {
@@ -56,7 +58,7 @@ class SocketHandler {
                 inviteCode: lobby.inviteCode,
                 lobby: lobby.serialize()
             });
-            console.log(`Lobby created: ${lobby.inviteCode} by ${displayName}`);
+            console.log(`Lobby created: ${lobby.inviteCode} by ${displayName}, drawingTime: ${lobby.drawingTime}s`);
         } else {
             socket.emit('lobby:error', { message: result.error });
         }

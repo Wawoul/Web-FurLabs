@@ -337,12 +337,16 @@ class FurLabsApp {
 
         document.getElementById('btn-confirm-create').addEventListener('click', () => {
             const name = document.getElementById('create-name').value.trim();
-            const time = parseInt(document.getElementById('create-time').value);
+            const timeInput = document.getElementById('create-time').value;
+            const time = parseInt(timeInput) || 180; // Default to 180 if invalid
             if (!name) {
                 this.showToast('Please enter your name', 'error');
                 return;
             }
-            this.network.createLobby(name, time);
+            // Clamp time between 60 and 600 seconds
+            const validTime = Math.max(60, Math.min(600, time));
+            console.log(`Creating lobby with drawing time: ${validTime}s`);
+            this.network.createLobby(name, validTime);
         });
 
         // Join lobby screen
