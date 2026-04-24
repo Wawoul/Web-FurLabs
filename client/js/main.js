@@ -242,11 +242,6 @@ class FurLabsApp {
             this.submissions.set(data.playerId, true);
             this.updateDrawingPlayerList();
 
-            // Track who drew what
-            if (data.bodyPart && data.playerName) {
-                this.artistCredits[data.bodyPart] = data.playerName;
-            }
-
             const player = this.lobby?.players.find(p => p.id === data.playerId);
             if (player) {
                 this.showToast(`${player.displayName} submitted!`, 'success');

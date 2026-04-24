@@ -373,6 +373,14 @@ class SocketHandler {
             // Use the TARGET player's style, not the requester's
             const styleInfo = lobby.getStyleInfo(targetSocketId);
 
+            console.log('AI generation starting for:', targetSocketId);
+            console.log('Drawings available:', {
+                head: drawings.head ? `${drawings.head.substring(0, 50)}...` : null,
+                torso: drawings.torso ? `${drawings.torso.substring(0, 50)}...` : null,
+                legs: drawings.legs ? `${drawings.legs.substring(0, 50)}...` : null
+            });
+            console.log('Style:', styleInfo);
+
             const aiImage = await this.aiComposer.composeFursona(
                 drawings.head,
                 drawings.torso,

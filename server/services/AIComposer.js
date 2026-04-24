@@ -39,6 +39,11 @@ class AIComposer {
             throw new Error('KIE_API_KEY not configured. Add your kie.ai API key to .env');
         }
 
+        // Validate that we have at least one drawing
+        if (!head && !torso && !legs) {
+            throw new Error('No drawings available for AI composition');
+        }
+
         const prompt = this.buildPrompt();
 
         // Store images temporarily and get their IDs
@@ -47,45 +52,67 @@ class AIComposer {
 
         try {
             // Store each image and build URLs for kie.ai to fetch
-            for (const imageData of [head, torso, legs]) {
-                if (imageData) {
-                    const id = TempImageStore.store(imageData);
+            const drawings = [
+                { name: 'head', data: head },
+                { name: 'torso', data: torso },
+                { name: 'legs', data: legs }
+            ];
+
+            for (const { name, data } of drawings) {
+                if (data) {
+                    const id = TempImageStore.store(data);
                     imageIds.push(id);
-                    imageUrls.push(`${this.serverBaseUrl}/api/temp-image/${id}`);
+                    const url = `${this.serverBaseUrl}/api/temp-image/${id}`;
+                    imageUrls.push(url);
+                    console.log(`Stored ${name} image: ${id}`);
+                } else {
+                    console.log(`Warning: ${name} drawing is missing`);
                 }
             }
 
-            console.log(`Stored ${imageIds.length} temp images for kie.ai`);
-            console.log(`Image URLs: ${imageUrls.join(', ')}`);
+            console.log(`Stored ${imageIds.length}/3 temp images for kie.ai`);
+            console.log(`Server base URL: ${this.serverBaseUrl}`);
 
             // Create task
+            const requestBody = {
+                model: 'nano-banana-2',
+                input: {
+                    prompt: prompt,
+                    image_input: imageUrls,
+                    aspect_ratio: '9:16', // Portrait orientation
+                    resolution: '1K',
+                    output_format: 'png'
+                }
+            };
+
+            console.log('kie.ai request:', JSON.stringify(requestBody, null, 2));
+
             const createResponse = await fetch(`${this.kieApiUrl}/createTask`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.apiKey}`
                 },
-                body: JSON.stringify({
-                    model: 'nano-banana-2',
-                    input: {
-                        prompt: prompt,
-                        image_input: imageUrls,
-                        aspect_ratio: '9:16', // Portrait orientation
-                        resolution: '1K',
-                        output_format: 'png'
-                    }
-                })
+                body: JSON.stringify(requestBody)
             });
 
+            const responseText = await createResponse.text();
+            console.log('kie.ai response status:', createResponse.status);
+            console.log('kie.ai response body:', responseText);
+
             if (!createResponse.ok) {
-                const errorText = await createResponse.text();
-                throw new Error(`kie.ai API error: ${createResponse.status} - ${errorText}`);
+                throw new Error(`kie.ai API error: ${createResponse.status} - ${responseText}`);
             }
 
-            const createResult = await createResponse.json();
+            let createResult;
+            try {
+                createResult = JSON.parse(responseText);
+            } catch (e) {
+                throw new Error(`kie.ai invalid JSON response: ${responseText}`);
+            }
 
             if (createResult.code !== 200 || !createResult.data?.taskId) {
-                throw new Error(`kie.ai task creation failed: ${createResult.msg || 'Unknown error'}`);
+                throw new Error(`kie.ai task creation failed: ${createResult.msg || JSON.stringify(createResult)}`);
             }
 
             const taskId = createResult.data.taskId;
@@ -110,6 +137,7 @@ class AIComposer {
     /**
      * Poll kie.ai for task result
      * Docs: https://docs.kie.ai/market/common/get-task-detail
+     * States: waiting, queuing, generating, success, fail
      */
     async pollKieAIResult(taskId, maxAttempts = 120, intervalMs = 2000) {
         for (let i = 0; i < maxAttempts; i++) {
@@ -131,6 +159,7 @@ class AIComposer {
                 }
 
                 const result = await response.json();
+                console.log(`Poll attempt ${i + 1} response:`, JSON.stringify(result.data?.state), result.data?.resultJson ? 'has result' : 'no result');
 
                 if (result.code !== 200) {
                     console.log(`Poll attempt ${i + 1}: ${result.msg}`);
@@ -139,35 +168,42 @@ class AIComposer {
 
                 const state = result.data?.state;
 
-                if (state === 'completed' || state === 'success') {
-                    // Extract result image URL
+                // Success state
+                if (state === 'success') {
                     const resultJson = result.data?.resultJson;
                     if (resultJson) {
                         const parsed = typeof resultJson === 'string'
                             ? JSON.parse(resultJson)
                             : resultJson;
 
-                        // Get the output image URL
-                        const imageUrl = parsed.output || parsed.image || parsed.url ||
+                        console.log('Result JSON parsed:', JSON.stringify(parsed));
+
+                        // kie.ai uses resultUrls array for image outputs
+                        const imageUrl = parsed.resultUrls?.[0] ||
+                                        parsed.output ||
+                                        parsed.image ||
+                                        parsed.url ||
                                         (parsed.images && parsed.images[0]);
 
                         if (imageUrl) {
-                            // Fetch and convert to base64
+                            console.log('Fetching result image from:', imageUrl);
                             return await this.fetchImageAsBase64(imageUrl);
                         }
                     }
                     throw new Error('No image in result');
                 }
 
-                if (state === 'failed' || state === 'error') {
-                    throw new Error(`Generation failed: ${result.data?.failMsg || 'Unknown error'}`);
+                // Fail state
+                if (state === 'fail') {
+                    const failMsg = result.data?.failMsg || result.data?.failCode || 'Unknown error';
+                    throw new Error(`Generation failed: ${failMsg}`);
                 }
 
-                // Still processing, continue polling
+                // Still processing (waiting, queuing, generating)
                 console.log(`Poll attempt ${i + 1}: state=${state}`);
 
             } catch (error) {
-                if (error.message.includes('Generation failed')) {
+                if (error.message.includes('Generation failed') || error.message.includes('No image')) {
                     throw error;
                 }
                 console.log(`Poll attempt ${i + 1} error:`, error.message);
