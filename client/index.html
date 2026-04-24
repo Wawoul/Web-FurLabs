@@ -267,33 +267,21 @@
                         </div>
                     </div>
 
-                    <!-- Reveal Content Wrapper (for overlay positioning) -->
-                    <div class="reveal-content-wrapper" id="reveal-content-wrapper">
-                        <!-- Click to Reveal Overlay -->
-                        <div class="reveal-click-overlay" id="reveal-click-overlay" onclick="if(window.app) window.app.revealCurrentFursona()">
-                            <div class="reveal-click-content">
-                                <div class="reveal-icon">?</div>
-                                <h3>Click to Reveal!</h3>
-                                <p>See what the artists created</p>
-                            </div>
+                    <!-- Individual Parts Reveal -->
+                    <div class="reveal-parts-container" id="reveal-parts-container">
+                        <div class="reveal-part hidden" id="reveal-head">
+                            <div class="part-label">HEAD</div>
+                            <img id="reveal-head-img" src="" alt="Head">
                         </div>
 
-                        <!-- Individual Parts Reveal -->
-                        <div class="reveal-parts-container" id="reveal-parts-container">
-                            <div class="reveal-part hidden" id="reveal-head">
-                                <div class="part-label">HEAD</div>
-                                <img id="reveal-head-img" src="" alt="Head">
-                            </div>
-
-                            <div class="reveal-part hidden" id="reveal-torso">
-                                <div class="part-label">TORSO</div>
+                        <div class="reveal-part hidden" id="reveal-torso">
+                            <div class="part-label">TORSO</div>
                                 <img id="reveal-torso-img" src="" alt="Torso">
                             </div>
 
-                            <div class="reveal-part hidden" id="reveal-legs">
-                                <div class="part-label">LEGS</div>
-                                <img id="reveal-legs-img" src="" alt="Legs">
-                            </div>
+                        <div class="reveal-part hidden" id="reveal-legs">
+                            <div class="part-label">LEGS</div>
+                            <img id="reveal-legs-img" src="" alt="Legs">
                         </div>
                     </div>
 

@@ -35,8 +35,6 @@ class FurLabsApp {
         this.selectedPlayerId = null;
         this.currentRevealStage = 0; // 0=head, 1=torso, 2=legs, 3=final
         this.zoomLevel = 50;
-        this.revealedFursonas = new Set(); // Track which fursonas this player has revealed (local only)
-
         this.init();
     }
 
@@ -194,7 +192,6 @@ class FurLabsApp {
             this.allPlayerDrawings = {};
             this.selectedPlayerId = null;
             this.currentRevealStage = 0;
-            this.revealedFursonas.clear();
 
             // Update waiting room and show it
             this.updateWaitingRoom();
@@ -223,7 +220,6 @@ class FurLabsApp {
             this.allPlayerDrawings = {};
             this.selectedPlayerId = null;
             this.currentRevealStage = 0;
-            this.revealedFursonas.clear();
 
             // Update waiting room
             this.updateWaitingRoom();
@@ -553,16 +549,6 @@ class FurLabsApp {
         document.getElementById('btn-reveal-continue').addEventListener('click', () => {
             this.advanceRevealStage();
         });
-
-        // Click-to-reveal overlay
-        const revealOverlay = document.getElementById('reveal-click-overlay');
-        if (revealOverlay) {
-            revealOverlay.addEventListener('click', (e) => {
-                e.stopPropagation();
-                console.log('Reveal overlay clicked, selectedPlayerId:', this.selectedPlayerId);
-                this.revealCurrentFursona();
-            });
-        }
 
         // Zoom controls
         document.querySelectorAll('.zoom-btn').forEach(btn => {
@@ -997,23 +983,6 @@ class FurLabsApp {
         document.getElementById('reveal-final').classList.add('hidden');
         document.getElementById('ai-lab-section').classList.add('hidden');
 
-        // Check if this fursona has been revealed locally
-        const isRevealed = this.revealedFursonas.has(playerId);
-        const revealOverlay = document.getElementById('reveal-click-overlay');
-        const partsContainer = document.getElementById('reveal-parts-container');
-
-        if (!isRevealed) {
-            // Show click-to-reveal overlay, hide content
-            revealOverlay.classList.remove('hidden');
-            partsContainer.classList.add('blur-hidden');
-            document.getElementById('reveal-continue').classList.add('hidden');
-            return;
-        }
-
-        // Already revealed - hide overlay and show content
-        revealOverlay.classList.add('hidden');
-        partsContainer.classList.remove('blur-hidden');
-
         // Set up images (no hint lines)
         if (playerData.head) {
             document.getElementById('reveal-head-img').src = playerData.head;
@@ -1064,21 +1033,6 @@ class FurLabsApp {
             // Not started - show placeholder
             document.getElementById('ai-placeholder').classList.remove('hidden');
         }
-    }
-
-    revealCurrentFursona() {
-        console.log('revealCurrentFursona called, selectedPlayerId:', this.selectedPlayerId);
-        if (!this.selectedPlayerId) {
-            console.log('No selectedPlayerId, returning');
-            return;
-        }
-
-        // Mark this fursona as revealed locally
-        this.revealedFursonas.add(this.selectedPlayerId);
-        console.log('Added to revealedFursonas:', this.revealedFursonas);
-
-        // Re-select to show the actual content
-        this.selectRevealPlayer(this.selectedPlayerId);
     }
 
     showRevealPart(part) {

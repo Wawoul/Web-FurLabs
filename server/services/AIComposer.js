@@ -181,24 +181,11 @@ class AIComposer {
 
         return `Create a PORTRAIT orientation (tall, not wide) full-body ${artStyle} style anthro furry character ${background}.
 
-I have three hand-drawn images representing different parts of a furry character (fursona):
-1. The HEAD (first image)
-2. The TORSO/body (second image)
-3. The LEGS/feet (third image)
-
-These were drawn by different people in a Gartic Phone / Exquisite Corpse game where they could only see small hints of where to connect their sections.
-
 CRITICAL REQUIREMENTS:
 - Output must be PORTRAIT orientation (taller than wide, like a character portrait)
-- Show the FULL character from head to feet in the image
 - Keep the result as close to the original drawings as possible
-- Combine all three body sections into one unified ${artStyle} style character
-- Maintain the colors, features, and details from each original drawing
-- Create smooth, natural transitions between the body sections
-- Place the character ${background}
-- Show the full character in a standing or dynamic pose
-
-The final result should honor all three artists' contributions while appearing as a cohesive ${artStyle} anthro furry character in PORTRAIT format.`;
+- Maintain the colors, features, and details from the original drawing
+- Place the character ${background}`;
     }
 
     /**
