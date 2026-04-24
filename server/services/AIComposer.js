@@ -236,7 +236,7 @@ class AIComposer {
         const artStyle = this.currentStyle || 'cartoon';
         const background = this.currentBackground || 'simple gradient';
 
-        return `Can you make this gartic phone image into a ${artStyle} anthro character with the background being ${background}.`;
+        return `Can you make this gartic phone image into a ${artStyle} anthro character with the background being ${background}. Keeping the design as close to the original as possible.`;
     }
 
     /**

@@ -320,34 +320,38 @@ class SocketHandler {
 
     /**
      * Automatically generate AI versions for all players in a lobby
-     * Runs in background, one at a time to avoid overwhelming the API
+     * Runs all generations in parallel for faster results
      */
     async startAutoAIGeneration(lobby) {
         const playerIds = Array.from(lobby.players.keys());
-        console.log(`Starting auto AI generation for ${playerIds.length} players in lobby ${lobby.inviteCode}`);
+        console.log(`Starting parallel AI generation for ${playerIds.length} players in lobby ${lobby.inviteCode}`);
 
-        for (const socketId of playerIds) {
-            // Skip if lobby is no longer in reveal state (e.g., new game started)
-            if (lobby.state !== 'revealing') {
-                console.log('Auto AI generation stopped - lobby state changed');
-                break;
-            }
-
-            // Skip if already generated or generating
+        // Filter to only players that need generation
+        const toGenerate = playerIds.filter(socketId => {
+            if (lobby.state !== 'revealing') return false;
             if (lobby.getPlayerAIVersion(socketId) || lobby.isGenerating(socketId)) {
                 console.log(`Skipping AI generation for ${socketId} - already done or in progress`);
-                continue;
+                return false;
             }
+            return true;
+        });
 
-            try {
-                await this.generateAIForPlayer(lobby, socketId);
-            } catch (error) {
-                console.error(`Auto AI generation failed for ${socketId}:`, error.message);
-                // Continue with next player even if one fails
+        // Generate all in parallel
+        const results = await Promise.allSettled(
+            toGenerate.map(socketId => this.generateAIForPlayer(lobby, socketId))
+        );
+
+        // Log results
+        results.forEach((result, index) => {
+            const socketId = toGenerate[index];
+            if (result.status === 'fulfilled') {
+                console.log(`AI generation succeeded for ${socketId}`);
+            } else {
+                console.error(`AI generation failed for ${socketId}:`, result.reason?.message);
             }
-        }
+        });
 
-        console.log(`Auto AI generation complete for lobby ${lobby.inviteCode}`);
+        console.log(`Parallel AI generation complete for lobby ${lobby.inviteCode}`);
     }
 
     /**
@@ -378,7 +382,11 @@ class SocketHandler {
             const drawings = lobby.getPlayerDrawings(targetSocketId);
             const styleInfo = lobby.getStyleInfo(targetSocketId);
 
-            console.log(`Auto-generating AI for player ${targetSocketId}`);
+            // Debug logging for missing drawings issue
+            console.log(`[AI Gen] Player: ${targetSocketId}`);
+            console.log(`[AI Gen] Drawings found: head=${!!drawings.head}, torso=${!!drawings.torso}, legs=${!!drawings.legs}`);
+            console.log(`[AI Gen] All playerDrawings keys: ${Array.from(lobby.playerDrawings.keys()).join(', ')}`);
+            console.log(`[AI Gen] Style info:`, styleInfo);
 
             const aiImage = await this.aiComposer.composeFursona(
                 drawings.head,

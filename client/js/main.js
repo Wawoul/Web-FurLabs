@@ -264,9 +264,10 @@ class FurLabsApp {
 
         this.network.on('ai:generating', (data) => {
             const targetId = data.targetPlayerId;
-            // Mark this fursona as generating
+            // Mark this fursona as generating and clear any previous error
             if (targetId && this.allPlayerDrawings[targetId]) {
                 this.allPlayerDrawings[targetId].isGenerating = true;
+                this.allPlayerDrawings[targetId].aiError = null;
                 // Update sidebar status
                 this.updateRevealPlayerStatus(targetId);
             }
@@ -287,10 +288,14 @@ class FurLabsApp {
                 this.allPlayerDrawings[targetId].isGenerating = false;
                 if (data.aiImage) {
                     this.allPlayerDrawings[targetId].aiImage = data.aiImage;
+                    this.allPlayerDrawings[targetId].aiError = null;
                     // Store the style info used for this fursona
                     if (data.styleInfo) {
                         this.allPlayerDrawings[targetId].styleInfo = data.styleInfo;
                     }
+                } else {
+                    // Track error state
+                    this.allPlayerDrawings[targetId].aiError = data.message || 'Generation failed';
                 }
                 // Update sidebar status
                 this.updateRevealPlayerStatus(targetId);
@@ -311,7 +316,9 @@ class FurLabsApp {
                     document.getElementById('display-art-style').textContent = styleInfo.artStyle || 'cartoon';
                     document.getElementById('display-background').textContent = styleInfo.background || 'simple gradient';
                 } else {
+                    // Show placeholder with error state (allows retry)
                     document.getElementById('ai-placeholder').classList.remove('hidden');
+                    document.querySelector('#ai-placeholder .ai-note').textContent = data.message || 'Generation failed. Click to retry.';
                     this.showToast(data.message || 'AI generation failed', 'error');
                 }
             }
@@ -710,9 +717,18 @@ class FurLabsApp {
     }
 
     async saveToGallery() {
+        // Get the raw drawing from the combined canvas
         const rawCanvas = document.getElementById('combined-canvas');
         const rawImage = rawCanvas.toDataURL('image/png');
-        const aiImage = this.currentAIImage;
+
+        // Get the AI image from the currently selected player's data
+        const playerData = this.allPlayerDrawings[this.selectedPlayerId];
+        const aiImage = playerData?.aiImage || null;
+
+        if (!aiImage) {
+            this.showToast('Wait for AI Lab version to complete first', 'warning');
+            return;
+        }
 
         try {
             const response = await fetch('/api/gallery', {
@@ -726,7 +742,7 @@ class FurLabsApp {
             });
 
             if (response.ok) {
-                this.showToast('Saved to gallery!', 'success');
+                this.showToast('Both versions saved to gallery!', 'success');
                 document.getElementById('btn-save-gallery').disabled = true;
                 document.getElementById('btn-save-gallery').textContent = 'Saved!';
             } else {
@@ -950,6 +966,8 @@ class FurLabsApp {
             let aiStatus = '';
             if (data.aiImage) {
                 aiStatus = '<span class="ai-status done" title="AI Ready">✓</span>';
+            } else if (data.aiError) {
+                aiStatus = '<span class="ai-status error" title="Failed - Click to retry">✗</span>';
             } else if (data.isGenerating) {
                 aiStatus = '<span class="ai-status generating" title="Generating...">⟳</span>';
             } else {
@@ -984,6 +1002,10 @@ class FurLabsApp {
                 statusEl.className = 'ai-status done';
                 statusEl.textContent = '✓';
                 statusEl.title = 'AI Ready';
+            } else if (data.aiError) {
+                statusEl.className = 'ai-status error';
+                statusEl.textContent = '✗';
+                statusEl.title = 'Failed - Click to retry';
             } else if (data.isGenerating) {
                 statusEl.className = 'ai-status generating';
                 statusEl.textContent = '⟳';
@@ -1048,9 +1070,9 @@ class FurLabsApp {
 
         // Reset save button
         document.getElementById('btn-save-gallery').disabled = false;
-        document.getElementById('btn-save-gallery').textContent = 'Save to Gallery';
+        document.getElementById('btn-save-gallery').textContent = 'Save Both to Gallery';
 
-        // Reset AI section - check for generating, generated, or queued
+        // Reset AI section - check for generated, error, generating, or queued states
         document.getElementById('ai-placeholder').classList.add('hidden');
         document.getElementById('ai-loading').classList.add('hidden');
         document.getElementById('ai-result-container').classList.add('hidden');
@@ -1063,6 +1085,10 @@ class FurLabsApp {
             const styleInfo = playerData.styleInfo || {};
             document.getElementById('display-art-style').textContent = styleInfo.artStyle || 'cartoon';
             document.getElementById('display-background').textContent = styleInfo.background || 'simple gradient';
+        } else if (playerData.aiError) {
+            // Generation failed - show placeholder with error message (allows retry)
+            document.getElementById('ai-placeholder').classList.remove('hidden');
+            document.querySelector('#ai-placeholder .ai-note').textContent = playerData.aiError + ' - Click to retry';
         } else if (playerData.isGenerating) {
             // Currently generating - show loading with active message
             document.getElementById('ai-loading').classList.remove('hidden');

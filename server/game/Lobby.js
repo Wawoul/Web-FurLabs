@@ -231,16 +231,22 @@ class Lobby {
         // Get which fursona this player is drawing for (Gartic Phone rotation)
         const targetOwnerId = this.getTargetFursonaOwner(socketId);
 
+        // Debug logging for tracking drawing storage
+        console.log(`[Submit] Drawer: ${socketId} → Target fursona: ${targetOwnerId}, Part: ${bodyPart}, Has data: ${!!canvasData}`);
+
         // Store the drawing for the TARGET fursona (not necessarily the drawer's own)
         const drawings = this.playerDrawings.get(targetOwnerId);
         if (drawings) {
             drawings[bodyPart] = canvasData;
+        } else {
+            console.log(`[Submit] WARNING: No drawings map for target ${targetOwnerId}`);
         }
 
         // Track who drew this part
         const drawers = this.playerDrawers.get(targetOwnerId);
         if (drawers) {
             drawers[bodyPart] = socketId;
+            console.log(`[Drawer] Recorded: ${player.displayName} drew ${bodyPart} for fursona ${targetOwnerId}`);
         }
 
         // Store hint data for the NEXT drawer of this fursona

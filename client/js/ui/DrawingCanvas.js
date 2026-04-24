@@ -54,9 +54,9 @@ class DrawingCanvas {
         // Click for fill tool
         this.canvas.addEventListener('click', (e) => {
             if (this.currentTool === 'fill') {
-                const rect = this.canvas.getBoundingClientRect();
-                const x = Math.floor(e.clientX - rect.left);
-                const y = Math.floor(e.clientY - rect.top);
+                const pos = this.getPosition(e);
+                const x = Math.floor(pos.x);
+                const y = Math.floor(pos.y);
                 CanvasUtils.floodFill(this.canvas, x, y, this.currentColor);
                 this.saveState();
             }

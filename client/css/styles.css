@@ -888,6 +888,7 @@ body::before {
 .reveal-sidebar li .player-avatar {
     width: 32px;
     height: 32px;
+    min-width: 32px;
     background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
     border-radius: 50%;
     display: flex;
@@ -898,11 +899,21 @@ body::before {
     font-size: 0.9rem;
 }
 
+/* Player name in sidebar - truncate if too long */
+.reveal-sidebar li > span:nth-child(2) {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* AI Status Indicators in Sidebar */
 .reveal-sidebar li .ai-status {
-    margin-left: auto;
+    flex-shrink: 0;
     font-size: 1rem;
-    opacity: 0.8;
+    opacity: 0.9;
+    min-width: 20px;
+    text-align: center;
 }
 
 .reveal-sidebar li .ai-status.done {
@@ -916,6 +927,10 @@ body::before {
 
 .reveal-sidebar li .ai-status.queued {
     color: var(--text-muted);
+}
+
+.reveal-sidebar li .ai-status.error {
+    color: var(--error);
 }
 
 @keyframes spin {
@@ -1126,13 +1141,12 @@ body::before {
     font-family: 'Nunito', sans-serif;
     font-size: 1rem;
     font-weight: 600;
-    background: linear-gradient(135deg, var(--secondary-light) 0%, var(--accent) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--text-soft);
     letter-spacing: 1px;
     text-transform: none;
-    margin-top: 4px;
+    margin-top: 8px;
+    -webkit-text-fill-color: var(--text-soft);
+    background: none;
 }
 
 .reveal-final {
@@ -1639,6 +1653,28 @@ body::before {
     .tool-palette {
         flex-direction: column;
         padding: 18px;
+    }
+
+    /* Mobile canvas wrapper - ensure proper scaling */
+    .canvas-wrapper {
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    #drawing-canvas {
+        width: 100%;
+        height: auto;
+        touch-action: none; /* Prevent scrolling while drawing */
+    }
+
+    .drawing-container {
+        padding: 10px;
+    }
+
+    .drawing-header {
+        flex-direction: column;
+        gap: 10px;
     }
 
     .reveal-tabs {
