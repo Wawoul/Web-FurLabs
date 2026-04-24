@@ -2,12 +2,17 @@
  * AI Composer Service
  * Integrates with kie.ai API (Nano Banana 2) or ComfyUI
  */
+const TempImageStore = require('./TempImageStore');
+
 class AIComposer {
     constructor() {
         this.provider = process.env.AI_PROVIDER || 'kieai';
         this.apiKey = process.env.KIE_API_KEY || process.env.NANOBANANA_API_KEY;
         this.comfyuiUrl = process.env.COMFYUI_URL || 'http://localhost:8188';
         this.kieApiUrl = 'https://api.kie.ai/api/v1/jobs';
+        // Server base URL for temp images - kie.ai needs to fetch from a public URL
+        // For production, set SERVER_BASE_URL to your public domain
+        this.serverBaseUrl = process.env.SERVER_BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
     }
 
     /**
@@ -36,20 +41,23 @@ class AIComposer {
 
         const prompt = this.buildPrompt();
 
-        // Ensure images have proper data URL format
-        const formatDataUrl = (data) => {
-            if (!data) return null;
-            if (data.startsWith('data:')) return data;
-            return `data:image/png;base64,${data}`;
-        };
-
-        const images = [
-            formatDataUrl(head),
-            formatDataUrl(torso),
-            formatDataUrl(legs)
-        ].filter(Boolean);
+        // Store images temporarily and get their IDs
+        const imageIds = [];
+        const imageUrls = [];
 
         try {
+            // Store each image and build URLs for kie.ai to fetch
+            for (const imageData of [head, torso, legs]) {
+                if (imageData) {
+                    const id = TempImageStore.store(imageData);
+                    imageIds.push(id);
+                    imageUrls.push(`${this.serverBaseUrl}/api/temp-image/${id}`);
+                }
+            }
+
+            console.log(`Stored ${imageIds.length} temp images for kie.ai`);
+            console.log(`Image URLs: ${imageUrls.join(', ')}`);
+
             // Create task
             const createResponse = await fetch(`${this.kieApiUrl}/createTask`, {
                 method: 'POST',
@@ -61,7 +69,7 @@ class AIComposer {
                     model: 'nano-banana-2',
                     input: {
                         prompt: prompt,
-                        image_input: images,
+                        image_input: imageUrls,
                         aspect_ratio: '9:16', // Portrait orientation
                         resolution: '1K',
                         output_format: 'png'
@@ -85,9 +93,15 @@ class AIComposer {
 
             // Poll for result
             const result = await this.pollKieAIResult(taskId);
+
+            // Clean up temp images after successful generation
+            TempImageStore.deleteMany(imageIds);
+
             return result;
 
         } catch (error) {
+            // Clean up temp images on error too
+            TempImageStore.deleteMany(imageIds);
             console.error('kie.ai error:', error);
             throw error;
         }

@@ -7,6 +7,7 @@ const path = require('path');
 const SocketHandler = require('./network/SocketHandler');
 const LobbyManager = require('./game/LobbyManager');
 const GalleryService = require('./services/GalleryService');
+const TempImageStore = require('./services/TempImageStore');
 
 const app = express();
 const httpServer = createServer(app);
@@ -82,6 +83,17 @@ app.post('/api/gallery', async (req, res) => {
         res.json(entry);
     } catch (error) {
         res.status(500).json({ error: 'Failed to save fursona' });
+    }
+});
+
+// Temporary image endpoint for AI services
+app.get('/api/temp-image/:id', (req, res) => {
+    const image = TempImageStore.get(req.params.id);
+    if (image) {
+        res.set('Content-Type', image.mimeType);
+        res.send(image.data);
+    } else {
+        res.status(404).send('Image not found');
     }
 });
 
