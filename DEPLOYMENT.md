@@ -226,13 +226,56 @@ ufw enable
 
 ## Updating Fur-Labs
 
-SSH into server and run:
+### Quick Update (Recommended)
+
+SSH into server and run the update script:
 
 ```bash
+/var/www/furlabs/update.sh
+```
+
+### Manual Update Steps
+
+SSH into server:
+
+```bash
+ssh root@your-server-ip
 cd /var/www/furlabs
-git pull origin main
-npm install          # If dependencies changed
+```
+
+#### 1. Check current status
+
+```bash
+pm2 status                    # Check if app is running
+git status                    # Check for local changes
+git log --oneline -3          # See current version
+```
+
+#### 2. Pull latest changes
+
+```bash
+git fetch origin              # Download changes without applying
+git log HEAD..origin/main --oneline  # Preview what's new
+git pull origin main          # Apply changes
+```
+
+#### 3. Install any new dependencies
+
+```bash
+npm install
+```
+
+#### 4. Restart the application
+
+```bash
 pm2 restart furlabs
+```
+
+#### 5. Verify it's working
+
+```bash
+pm2 status                    # Should show "online"
+pm2 logs furlabs --lines 20   # Check for errors
 ```
 
 ### Quick Update Script
@@ -241,11 +284,53 @@ Create `/var/www/furlabs/update.sh`:
 
 ```bash
 #!/bin/bash
+set -e  # Exit on error
+
 cd /var/www/furlabs
+
+echo "=== Fur-Labs Update Script ==="
+echo ""
+
+# Show current version
+echo "Current version:"
+git log --oneline -1
+echo ""
+
+# Check for local changes
+if [[ -n $(git status -s) ]]; then
+    echo "Warning: Local changes detected!"
+    git status -s
+    echo ""
+    read -p "Stash changes and continue? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        git stash
+    else
+        echo "Update cancelled."
+        exit 1
+    fi
+fi
+
+# Pull latest
+echo "Pulling latest changes..."
 git pull origin main
+
+# Install dependencies
+echo "Installing dependencies..."
 npm install
+
+# Restart app
+echo "Restarting application..."
 pm2 restart furlabs
-echo "Update complete!"
+
+# Show new version
+echo ""
+echo "Updated to:"
+git log --oneline -1
+
+echo ""
+echo "=== Update complete! ==="
+pm2 status
 ```
 
 Make executable:
@@ -258,6 +343,58 @@ Run updates with:
 
 ```bash
 /var/www/furlabs/update.sh
+```
+
+### Rollback to Previous Version
+
+If something goes wrong after updating:
+
+```bash
+cd /var/www/furlabs
+
+# See recent commits
+git log --oneline -10
+
+# Rollback to previous commit
+git checkout HEAD~1
+
+# Or rollback to specific commit
+git checkout abc1234
+
+# Restart app
+pm2 restart furlabs
+```
+
+To return to latest:
+
+```bash
+git checkout main
+git pull origin main
+pm2 restart furlabs
+```
+
+### Update Specific Branch
+
+If you're testing a feature branch:
+
+```bash
+cd /var/www/furlabs
+git fetch origin
+git checkout feature-branch
+npm install
+pm2 restart furlabs
+```
+
+### Force Update (Discard Local Changes)
+
+**Warning:** This will overwrite any local changes!
+
+```bash
+cd /var/www/furlabs
+git fetch origin
+git reset --hard origin/main
+npm install
+pm2 restart furlabs
 ```
 
 ---

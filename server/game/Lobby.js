@@ -12,17 +12,20 @@ class Lobby {
         this.createdAt = Date.now();
         this.startedAt = null;
 
-        // Round-based gameplay - each player draws their OWN fursona
+        // Round-based gameplay with Gartic Phone rotation
+        // Each round, players rotate which fursona they draw for
         this.currentRound = 0; // 0=head, 1=torso, 2=legs
         this.roundSubmissions = new Set(); // socketIds that submitted this round
+        this.playerOrder = []; // Array of socketIds for rotation
 
-        // Per-player drawing storage: playerId -> { head, torso, legs }
+        // Per-fursona drawing storage: ownerSocketId -> { head, torso, legs }
+        // Each fursona is "owned" by a player but drawn by different people
         this.playerDrawings = new Map();
 
-        // Per-player hints: playerId -> { head: {bottom}, torso: {top, bottom}, legs: {top} }
+        // Per-fursona hints: ownerSocketId -> { head: {bottom}, torso: {top, bottom}, legs: {top} }
         this.playerHints = new Map();
 
-        // Per-player AI versions: playerId -> aiImage
+        // Per-fursona AI versions: ownerSocketId -> aiImage
         this.playerAIVersions = new Map();
 
         // Timer
@@ -124,6 +127,35 @@ class Lobby {
         return BODY_PART_ORDER[this.currentRound];
     }
 
+    /**
+     * Get which fursona (owner) a player should draw for in the current round
+     * Gartic Phone style: Round 0 = own fursona, Round 1+ = rotate to next player's fursona
+     */
+    getTargetFursonaOwner(drawerSocketId) {
+        const drawerIndex = this.playerOrder.indexOf(drawerSocketId);
+        if (drawerIndex === -1) return drawerSocketId; // Fallback to own
+
+        // Rotate based on round: each round, move to the next fursona
+        const targetIndex = (drawerIndex + this.currentRound) % this.playerOrder.length;
+        return this.playerOrder[targetIndex];
+    }
+
+    /**
+     * Get who drew the previous part for a fursona
+     */
+    getPreviousDrawer(fursonaOwnerId) {
+        if (this.currentRound === 0) return null; // No previous drawer for head
+
+        const ownerIndex = this.playerOrder.indexOf(fursonaOwnerId);
+        if (ownerIndex === -1) return null;
+
+        // Previous round: who drew for this fursona?
+        // If current round is R, the drawer at round R-1 was at position (ownerIndex - (R-1)) mod N
+        const prevRound = this.currentRound - 1;
+        const drawerIndex = (ownerIndex - prevRound + this.playerOrder.length) % this.playerOrder.length;
+        return this.playerOrder[drawerIndex];
+    }
+
     startGame() {
         if (!this.canStart()) {
             return { success: false, error: 'Not all players are ready' };
@@ -135,12 +167,20 @@ class Lobby {
         this.roundSubmissions.clear();
         this.timeRemaining = this.drawingTime;
 
+        // Create player order for rotation (shuffle for fairness)
+        this.playerOrder = Array.from(this.players.keys());
+        // Shuffle player order
+        for (let i = this.playerOrder.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.playerOrder[i], this.playerOrder[j]] = [this.playerOrder[j], this.playerOrder[i]];
+        }
+
         // Reset all player submissions
         for (const player of this.players.values()) {
             player.hasSubmitted = false;
         }
 
-        // Clear previous drawings
+        // Clear previous drawings - initialize for each fursona owner
         for (const socketId of this.players.keys()) {
             this.playerDrawings.set(socketId, {
                 [BODY_PARTS.HEAD]: null,
@@ -167,14 +207,17 @@ class Lobby {
             return { success: false, error: `Wrong body part. Expected ${currentPart}` };
         }
 
-        // Store this player's drawing for their own fursona
-        const drawings = this.playerDrawings.get(socketId);
+        // Get which fursona this player is drawing for (Gartic Phone rotation)
+        const targetOwnerId = this.getTargetFursonaOwner(socketId);
+
+        // Store the drawing for the TARGET fursona (not necessarily the drawer's own)
+        const drawings = this.playerDrawings.get(targetOwnerId);
         if (drawings) {
             drawings[bodyPart] = canvasData;
         }
 
-        // Store hint data for this player's next part
-        const hints = this.playerHints.get(socketId);
+        // Store hint data for the NEXT drawer of this fursona
+        const hints = this.playerHints.get(targetOwnerId);
         if (hints && hintData) {
             if (bodyPart === BODY_PARTS.HEAD && hintData.bottom) {
                 hints[BODY_PARTS.TORSO].top = hintData.bottom;
@@ -186,10 +229,15 @@ class Lobby {
         this.roundSubmissions.add(socketId);
         player.markSubmitted();
 
+        // Get the target fursona owner's name for display
+        const targetOwner = this.players.get(targetOwnerId);
+        const targetName = targetOwner ? targetOwner.displayName : 'Unknown';
+
         return {
             success: true,
             roundComplete: this.isRoundComplete(),
-            playerName: player.displayName
+            playerName: player.displayName,
+            targetFursonaOwner: targetName
         };
     }
 
@@ -217,9 +265,24 @@ class Lobby {
     }
 
     getHintsForPlayer(socketId) {
-        const hints = this.playerHints.get(socketId);
+        // Get hints from the fursona this player is drawing for
+        const targetOwnerId = this.getTargetFursonaOwner(socketId);
+        const hints = this.playerHints.get(targetOwnerId);
         const currentPart = this.getCurrentBodyPart();
         return hints ? hints[currentPart] : {};
+    }
+
+    /**
+     * Get info about which fursona a player is drawing for
+     */
+    getTargetFursonaInfo(socketId) {
+        const targetOwnerId = this.getTargetFursonaOwner(socketId);
+        const targetOwner = this.players.get(targetOwnerId);
+        return {
+            ownerId: targetOwnerId,
+            ownerName: targetOwner ? targetOwner.displayName : 'Unknown',
+            isOwnFursona: targetOwnerId === socketId
+        };
     }
 
     getPlayerDrawings(socketId) {
@@ -271,6 +334,33 @@ class Lobby {
         }
     }
 
+    /**
+     * Prepare lobby for new game - transition to waiting without clearing drawings yet
+     * Called when first player clicks "New Game" from reveal screen
+     */
+    prepareForNewGame() {
+        this.state = GAME_STATES.WAITING;
+        this.currentRound = 0;
+        this.roundSubmissions.clear();
+        this.timeRemaining = this.drawingTime;
+
+        // Reset all players to not ready
+        for (const player of this.players.values()) {
+            player.setReady(false);
+            player.hasSubmitted = false;
+        }
+
+        // Clear timer if running
+        if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = null;
+        }
+    }
+
+    /**
+     * Full reset for new game - clears all drawings
+     * Called when host starts a new game after everyone is ready
+     */
     resetForNewGame() {
         this.state = GAME_STATES.WAITING;
         this.currentRound = 0;

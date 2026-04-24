@@ -150,16 +150,19 @@ class SocketHandler {
         }
 
         // Send game start to all players - everyone draws the same part each round
+        // But each player may be drawing for a different fursona (Gartic Phone rotation)
         const currentPart = lobby.getCurrentBodyPart();
         for (const [socketId, p] of lobby.players) {
             const playerSocket = this.io.sockets.sockets.get(socketId);
             if (playerSocket) {
+                const targetInfo = lobby.getTargetFursonaInfo(socketId);
                 playerSocket.emit('game:start', {
                     currentPart: currentPart,
                     drawingTime: lobby.drawingTime,
                     round: lobby.currentRound + 1,
                     totalRounds: BODY_PART_ORDER.length,
-                    hints: lobby.getHintsForPlayer(socketId)
+                    hints: lobby.getHintsForPlayer(socketId),
+                    targetFursona: targetInfo
                 });
             }
         }
@@ -254,15 +257,17 @@ class SocketHandler {
             // Start next round
             const currentPart = result.nextPart;
 
-            // Send next round to all players with their hints
+            // Send next round to all players with their hints and target fursona info
             for (const [socketId, player] of lobby.players) {
                 const playerSocket = this.io.sockets.sockets.get(socketId);
                 if (playerSocket) {
+                    const targetInfo = lobby.getTargetFursonaInfo(socketId);
                     playerSocket.emit('game:nextRound', {
                         currentPart: currentPart,
                         round: lobby.currentRound + 1,
                         totalRounds: BODY_PART_ORDER.length,
-                        hints: lobby.getHintsForPlayer(socketId)
+                        hints: lobby.getHintsForPlayer(socketId),
+                        targetFursona: targetInfo
                     });
                 }
             }
@@ -376,24 +381,27 @@ class SocketHandler {
 
         const player = lobby.getPlayer(socket.id);
 
-        if (player.isHost) {
-            // Host initiates new game - reset lobby and notify all
-            lobby.resetForNewGame();
-
-            this.emitToLobby(lobby.inviteCode, 'lobby:newGame', {
-                lobby: lobby.serialize()
-            });
-
-            console.log(`New game initiated in lobby: ${lobby.inviteCode}`);
-        } else {
-            // Non-host player marks themselves as ready for new game
-            lobby.setPlayerReady(socket.id, true);
-
-            this.emitToLobby(lobby.inviteCode, 'lobby:readyUpdate', {
-                playerId: player.id,
-                isReady: true
-            });
+        // If lobby is still in reveal/complete state, prepare for new game
+        // This transitions to WAITING but keeps drawings until next game starts
+        if (lobby.state === GAME_STATES.REVEALING || lobby.state === GAME_STATES.COMPLETE) {
+            lobby.prepareForNewGame();
         }
+
+        // Mark this player as ready for new game
+        lobby.setPlayerReady(socket.id, true);
+
+        // Send this player back to waiting room
+        socket.emit('lobby:returnToWaiting', {
+            lobby: lobby.serialize()
+        });
+
+        // Notify others about the ready update (they might still be in reveal)
+        socket.to(`lobby:${lobby.inviteCode}`).emit('lobby:readyUpdate', {
+            playerId: player.id,
+            isReady: true
+        });
+
+        console.log(`${player.displayName} ready for new game in lobby: ${lobby.inviteCode}`);
     }
 
     handleDisconnect(socket) {

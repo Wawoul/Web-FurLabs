@@ -505,6 +505,34 @@ body::before {
     font-weight: 500;
 }
 
+.custom-input-wrapper {
+    margin-top: 15px;
+}
+
+.custom-style-input {
+    width: 100%;
+    padding: 14px 18px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text);
+    font-size: 1rem;
+    font-family: 'Nunito', sans-serif;
+    transition: all 0.3s;
+    text-align: center;
+}
+
+.custom-style-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 20px rgba(255, 107, 157, 0.3);
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.custom-style-input::placeholder {
+    color: var(--text-muted);
+}
+
 /* ==================== DRAWING SCREEN ==================== */
 .drawing-layout {
     display: flex;

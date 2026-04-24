@@ -46,45 +46,51 @@ const CanvasUtils = {
     },
 
     /**
-     * Combine three body part images vertically
+     * Combine three body part images vertically with overlap
+     * The hint areas (10% of each drawing) overlap to create seamless transitions
      */
     async combineDrawings(headData, torsoData, legsData, targetCanvas) {
         const ctx = targetCanvas.getContext('2d');
-        const partHeight = targetCanvas.height / 3;
 
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, targetCanvas.width, targetCanvas.height);
 
         try {
+            // Each source drawing is 800x400 (2:1 ratio)
+            // We need to fit 3 drawings with overlap
+            // Hint overlap is 10% of drawing height (40px)
+            const sourceWidth = 800;
+            const sourceHeight = 400;
+            const overlapAmount = sourceHeight * 0.1; // 40px overlap
+
+            // Calculate drawing positions with overlap
+            // Total height = 3 * 400 - 2 * 40 = 1120px (fits in 1200px canvas)
+            const scaleFactor = targetCanvas.width / sourceWidth;
+            const scaledPartHeight = sourceHeight * scaleFactor;
+            const scaledOverlap = overlapAmount * scaleFactor;
+
+            // Position 1: Head at top
+            let currentY = 0;
             if (headData) {
                 const headImg = await this.loadImage(headData);
-                ctx.drawImage(headImg, 0, 0, targetCanvas.width, partHeight);
+                ctx.drawImage(headImg, 0, currentY, targetCanvas.width, scaledPartHeight);
             }
 
+            // Position 2: Torso overlapping with head's bottom hint
+            currentY = scaledPartHeight - scaledOverlap;
             if (torsoData) {
                 const torsoImg = await this.loadImage(torsoData);
-                ctx.drawImage(torsoImg, 0, partHeight, targetCanvas.width, partHeight);
+                ctx.drawImage(torsoImg, 0, currentY, targetCanvas.width, scaledPartHeight);
             }
 
+            // Position 3: Legs overlapping with torso's bottom hint
+            currentY = (scaledPartHeight - scaledOverlap) * 2;
             if (legsData) {
                 const legsImg = await this.loadImage(legsData);
-                ctx.drawImage(legsImg, 0, partHeight * 2, targetCanvas.width, partHeight);
+                ctx.drawImage(legsImg, 0, currentY, targetCanvas.width, scaledPartHeight);
             }
 
-            // Draw dividing lines
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-            ctx.lineWidth = 2;
-            ctx.setLineDash([10, 10]);
-
-            ctx.beginPath();
-            ctx.moveTo(0, partHeight);
-            ctx.lineTo(targetCanvas.width, partHeight);
-            ctx.stroke();
-
-            ctx.beginPath();
-            ctx.moveTo(0, partHeight * 2);
-            ctx.lineTo(targetCanvas.width, partHeight * 2);
-            ctx.stroke();
+            // No dividing lines - seamless connection!
 
         } catch (error) {
             console.error('Error combining drawings:', error);

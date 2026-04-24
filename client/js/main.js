@@ -118,12 +118,15 @@ class FurLabsApp {
 
         // Game events
         this.network.on('game:start', (data) => {
-            // Round-based: everyone draws same part
+            // Round-based: everyone draws same part but for different fursonas
             this.currentRound = data.round || 1;
             this.currentPart = data.currentPart || 'head';
             this.hasSubmittedThisRound = false;
             this.submissions.clear();
             this.myDrawings = { head: null, torso: null, legs: null };
+
+            // Store target fursona info (whose fursona we're drawing for)
+            this.targetFursona = data.targetFursona || { ownerName: 'your', isOwnFursona: true };
 
             // Initialize all players as not submitted
             if (this.lobby) {
@@ -137,7 +140,8 @@ class FurLabsApp {
                 drawingTime: data.drawingTime,
                 hints: data.hints,
                 round: data.round,
-                totalRounds: data.totalRounds
+                totalRounds: data.totalRounds,
+                targetFursona: data.targetFursona
             };
             // Show style selection screen first
             this.showStyleScreen();
@@ -149,6 +153,9 @@ class FurLabsApp {
             this.currentPart = data.currentPart;
             this.hasSubmittedThisRound = false;
             this.submissions.clear();
+
+            // Update target fursona info for this round
+            this.targetFursona = data.targetFursona || { ownerName: 'your', isOwnFursona: true };
 
             // Reset all players as not submitted
             if (this.lobby) {
@@ -170,9 +177,34 @@ class FurLabsApp {
             document.getElementById('btn-submit-drawing').disabled = false;
             document.getElementById('btn-submit-drawing').textContent = 'Submit Drawing';
 
-            this.showToast(`Round ${data.round}: Draw the ${this.currentPart}!`, 'info');
+            // Show who we're drawing for
+            const targetName = this.targetFursona.isOwnFursona ? 'your own' : `${this.targetFursona.ownerName}'s`;
+            this.showToast(`Round ${data.round}: Draw the ${this.currentPart} for ${targetName} fursona!`, 'info');
         });
 
+        // Player returns to waiting room (clicked New Game)
+        this.network.on('lobby:returnToWaiting', (data) => {
+            this.lobby = data.lobby;
+            this.currentRound = 0;
+            this.currentPart = 'head';
+            this.hasSubmittedThisRound = false;
+            this.submissions.clear();
+            this.myDrawings = { head: null, torso: null, legs: null };
+            this.allPlayerDrawings = {};
+            this.selectedPlayerId = null;
+            this.currentRevealStage = 0;
+
+            // Update waiting room and show it
+            this.updateWaitingRoom();
+            this.showScreen('waiting');
+
+            // Keep ready checkbox checked since clicking New Game marks us ready
+            document.getElementById('ready-checkbox').checked = true;
+
+            this.showToast('Ready for new game!', 'success');
+        });
+
+        // Legacy handler - kept for backwards compatibility
         this.network.on('lobby:newGame', (data) => {
             // Reset for new game
             this.lobby = data.lobby;
@@ -302,10 +334,27 @@ class FurLabsApp {
         });
 
         // Waiting room
-        document.getElementById('btn-copy-code').addEventListener('click', () => {
+        document.getElementById('btn-copy-code').addEventListener('click', async () => {
             const code = document.getElementById('display-invite-code').textContent;
-            navigator.clipboard.writeText(code);
-            this.showToast('Code copied!', 'success');
+            try {
+                await navigator.clipboard.writeText(code);
+                this.showToast('Code copied!', 'success');
+            } catch (err) {
+                // Fallback for older browsers or permission denied
+                const textArea = document.createElement('textarea');
+                textArea.value = code;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    this.showToast('Code copied!', 'success');
+                } catch (e) {
+                    this.showToast('Failed to copy code', 'error');
+                }
+                document.body.removeChild(textArea);
+            }
         });
 
         document.getElementById('btn-leave-lobby').addEventListener('click', () => {
@@ -326,6 +375,9 @@ class FurLabsApp {
                 document.querySelectorAll('#style-options .style-option').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 this.selectedArtStyle = btn.dataset.style;
+                // Clear custom input when preset selected
+                const customInput = document.getElementById('custom-style-input');
+                if (customInput) customInput.value = '';
             });
         });
 
@@ -334,10 +386,41 @@ class FurLabsApp {
                 document.querySelectorAll('#bg-options .style-option').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 this.selectedBackground = btn.dataset.bg;
+                // Clear custom input when preset selected
+                const customInput = document.getElementById('custom-bg-input');
+                if (customInput) customInput.value = '';
             });
         });
 
+        // Custom style text inputs
+        const customStyleInput = document.getElementById('custom-style-input');
+        if (customStyleInput) {
+            customStyleInput.addEventListener('input', (e) => {
+                if (e.target.value.trim()) {
+                    document.querySelectorAll('#style-options .style-option').forEach(b => b.classList.remove('active'));
+                    this.selectedArtStyle = e.target.value.trim();
+                }
+            });
+        }
+
+        const customBgInput = document.getElementById('custom-bg-input');
+        if (customBgInput) {
+            customBgInput.addEventListener('input', (e) => {
+                if (e.target.value.trim()) {
+                    document.querySelectorAll('#bg-options .style-option').forEach(b => b.classList.remove('active'));
+                    this.selectedBackground = e.target.value.trim();
+                }
+            });
+        }
+
         document.getElementById('btn-confirm-style').addEventListener('click', () => {
+            // Check for custom inputs first
+            const customStyle = document.getElementById('custom-style-input')?.value.trim();
+            const customBg = document.getElementById('custom-bg-input')?.value.trim();
+
+            if (customStyle) this.selectedArtStyle = customStyle;
+            if (customBg) this.selectedBackground = customBg;
+
             // Submit style choice to server
             this.network.submitStyle(this.selectedArtStyle, this.selectedBackground);
             // Start drawing phase with stored data
@@ -682,12 +765,25 @@ class FurLabsApp {
     }
 
     updateDrawingLabel(part) {
-        const labels = {
-            'head': 'Draw the Head',
-            'torso': 'Draw the Torso',
-            'legs': 'Draw the Legs'
+        const partNames = {
+            'head': 'Head',
+            'torso': 'Torso',
+            'legs': 'Legs'
         };
-        document.getElementById('drawing-part-label').textContent = labels[part] || 'Draw';
+
+        const partName = partNames[part] || 'Part';
+        let label = `Draw the ${partName}`;
+
+        // Add target fursona info if available
+        if (this.targetFursona) {
+            if (this.targetFursona.isOwnFursona) {
+                label += ' for your Fursona';
+            } else {
+                label += ` for ${this.targetFursona.ownerName}'s Fursona`;
+            }
+        }
+
+        document.getElementById('drawing-part-label').textContent = label;
     }
 
     updateHintDisplay(part, serverHints) {

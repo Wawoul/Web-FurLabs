@@ -47,11 +47,12 @@ class AIComposer {
         const prompt = this.buildPrompt();
 
         // Try different model endpoints that support image generation
+        // Updated models for 2026 - Gemini image generation models
         const models = [
-            'gemini-2.0-flash-exp-image-generation',
             'gemini-2.0-flash-preview-image-generation',
-            'imagen-3.0-generate-002',
-            'gemini-exp-1206'
+            'gemini-2.0-flash-exp-image-generation',
+            'gemini-1.5-flash-002',
+            'gemini-1.5-pro-002'
         ];
 
         let lastError = null;
