@@ -355,6 +355,16 @@ class SocketHandler {
             return;
         }
 
+        // Check if generation is already in progress for this fursona
+        if (lobby.isGenerating(targetSocketId)) {
+            // Already generating - just inform the requester, don't start another
+            socket.emit('ai:generating', { targetPlayerId: targetSocketId, progress: 0 });
+            return;
+        }
+
+        // Mark as generating to prevent duplicate requests
+        lobby.startGenerating(targetSocketId);
+
         // Notify all players that AI generation is starting for this fursona
         this.emitToLobby(lobby.inviteCode, 'ai:generating', { targetPlayerId: targetSocketId, progress: 0 });
 
@@ -384,6 +394,8 @@ class SocketHandler {
 
         } catch (error) {
             console.error('AI generation error:', error);
+            // Clear generating flag on error
+            lobby.stopGenerating(targetSocketId);
             // Broadcast error to all players
             this.emitToLobby(lobby.inviteCode, 'ai:complete', {
                 targetPlayerId: targetSocketId,

@@ -33,6 +33,9 @@ class Lobby {
         // Per-fursona AI versions: ownerSocketId -> aiImage
         this.playerAIVersions = new Map();
 
+        // Track which fursonas are currently being generated (prevent duplicate requests)
+        this.generatingInProgress = new Set();
+
         // Timer
         this.timer = null;
         this.timeRemaining = this.drawingTime;
@@ -211,6 +214,7 @@ class Lobby {
             });
         }
         this.playerAIVersions.clear();
+        this.generatingInProgress.clear();
 
         return { success: true };
     }
@@ -345,10 +349,24 @@ class Lobby {
 
     setPlayerAIVersion(socketId, imageData) {
         this.playerAIVersions.set(socketId, imageData);
+        // Clear generating flag when complete
+        this.generatingInProgress.delete(socketId);
     }
 
     getPlayerAIVersion(socketId) {
         return this.playerAIVersions.get(socketId);
+    }
+
+    isGenerating(socketId) {
+        return this.generatingInProgress.has(socketId);
+    }
+
+    startGenerating(socketId) {
+        this.generatingInProgress.add(socketId);
+    }
+
+    stopGenerating(socketId) {
+        this.generatingInProgress.delete(socketId);
     }
 
     setStyle(socketId, artStyle, background) {
@@ -429,6 +447,7 @@ class Lobby {
             });
         }
         this.playerAIVersions.clear();
+        this.generatingInProgress.clear();
     }
 
     complete() {
