@@ -32,9 +32,8 @@ class Lobby {
         this.timer = null;
         this.timeRemaining = this.drawingTime;
 
-        // Style choices for AI generation
-        this.artStyle = 'cartoon';
-        this.background = 'simple gradient';
+        // Per-player style choices for AI generation: socketId -> { artStyle, background }
+        this.playerStyles = new Map();
 
         // Add host
         this.addPlayer(hostSocketId, hostName, true);
@@ -314,16 +313,16 @@ class Lobby {
         return this.playerAIVersions.get(socketId);
     }
 
-    setStyle(artStyle, background) {
-        this.artStyle = artStyle || 'cartoon';
-        this.background = background || 'simple gradient';
+    setStyle(socketId, artStyle, background) {
+        this.playerStyles.set(socketId, {
+            artStyle: artStyle || 'cartoon',
+            background: background || 'simple gradient'
+        });
     }
 
-    getStyleInfo() {
-        return {
-            artStyle: this.artStyle,
-            background: this.background
-        };
+    getStyleInfo(socketId) {
+        const style = this.playerStyles.get(socketId);
+        return style || { artStyle: 'cartoon', background: 'simple gradient' };
     }
 
     transitionToReveal() {

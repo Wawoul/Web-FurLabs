@@ -46,15 +46,10 @@ class AIComposer {
 
         const prompt = this.buildPrompt();
 
-        // Try different model endpoints that support image generation
-        // Updated models for 2026 - Nano Banana / Gemini image generation models
-        // See: https://ai.google.dev/gemini-api/docs/image-generation
+        // Use gemini-2.5-flash-image (Nano Banana) as the primary model
         const models = [
-            'gemini-2.0-flash-exp',              // Gemini 2.0 Flash with image output
-            'gemini-2.0-flash-preview-image-generation', // Image generation preview
-            'gemini-2.5-flash-image',            // Nano Banana
-            'gemini-3.1-flash-image-preview',    // Nano Banana 2
-            'gemini-3-pro-image-preview'         // Nano Banana Pro
+            'gemini-2.5-flash-preview-image-generation',  // Primary: Gemini 2.5 Flash image gen
+            'gemini-2.0-flash-exp'               // Fallback
         ];
 
         let lastError = null;
@@ -187,23 +182,26 @@ class AIComposer {
         const artStyle = this.currentStyle || 'cartoon';
         const background = this.currentBackground || 'simple gradient';
 
-        return `Make this Gartic Phone / Exquisite Corpse collaborative drawing into a ${artStyle} style anthro furry character ${background}.
+        return `Create a PORTRAIT orientation (tall, not wide) full-body ${artStyle} style anthro furry character ${background}.
 
 I have three hand-drawn images representing different parts of a furry character (fursona):
 1. The HEAD (first image)
 2. The TORSO/body (second image)
 3. The LEGS/feet (third image)
 
-These were drawn by different people who could only see small hints of where to connect their sections.
+These were drawn by different people in a Gartic Phone / Exquisite Corpse game where they could only see small hints of where to connect their sections.
 
-IMPORTANT: Keep the result as close to the original drawings as possible while:
-- Combining all three body sections into one unified ${artStyle} style character
-- Maintaining the colors, features, and details from each original drawing
-- Creating smooth, natural transitions between the body sections
-- Placing the character ${background}
-- Showing the full character in a standing or dynamic pose
+CRITICAL REQUIREMENTS:
+- Output must be PORTRAIT orientation (taller than wide, like a character portrait)
+- Show the FULL character from head to feet in the image
+- Keep the result as close to the original drawings as possible
+- Combine all three body sections into one unified ${artStyle} style character
+- Maintain the colors, features, and details from each original drawing
+- Create smooth, natural transitions between the body sections
+- Place the character ${background}
+- Show the full character in a standing or dynamic pose
 
-The final result should honor all three artists' contributions while appearing as a cohesive ${artStyle} anthro furry character.`;
+The final result should honor all three artists' contributions while appearing as a cohesive ${artStyle} anthro furry character in PORTRAIT format.`;
     }
 
     /**

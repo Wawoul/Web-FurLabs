@@ -286,10 +286,11 @@ class SocketHandler {
         }
 
         const { artStyle, background } = data;
-        lobby.setStyle(artStyle, background);
+        // Store style for THIS player's fursona
+        lobby.setStyle(socket.id, artStyle, background);
 
         socket.emit('style:confirmed', { artStyle, background });
-        console.log(`Style set for lobby ${lobby.inviteCode}: ${artStyle}, ${background}`);
+        console.log(`Style set for player ${socket.id} in lobby ${lobby.inviteCode}: ${artStyle}, ${background}`);
     }
 
     triggerReveal(lobby) {
@@ -342,10 +343,12 @@ class SocketHandler {
         // Check if already generated - send cached result to ALL players
         const existingAI = lobby.getPlayerAIVersion(targetSocketId);
         if (existingAI) {
-            // Broadcast to all players in lobby so everyone sees it
+            // Broadcast to all players in lobby so everyone sees it (include style info)
+            const styleInfo = lobby.getStyleInfo(targetSocketId);
             this.emitToLobby(lobby.inviteCode, 'ai:complete', {
                 targetPlayerId: targetSocketId,
-                aiImage: existingAI
+                aiImage: existingAI,
+                styleInfo: styleInfo
             });
             return;
         }
@@ -355,7 +358,8 @@ class SocketHandler {
 
         try {
             const drawings = lobby.getPlayerDrawings(targetSocketId);
-            const styleInfo = lobby.getStyleInfo();
+            // Use the TARGET player's style, not the requester's
+            const styleInfo = lobby.getStyleInfo(targetSocketId);
 
             const aiImage = await this.aiComposer.composeFursona(
                 drawings.head,
@@ -367,10 +371,11 @@ class SocketHandler {
             // Cache the result
             lobby.setPlayerAIVersion(targetSocketId, aiImage);
 
-            // Broadcast to ALL players in lobby
+            // Broadcast to ALL players in lobby with style info
             this.emitToLobby(lobby.inviteCode, 'ai:complete', {
                 targetPlayerId: targetSocketId,
-                aiImage: aiImage
+                aiImage: aiImage,
+                styleInfo: styleInfo
             });
 
             console.log(`AI generation complete for player in lobby: ${lobby.inviteCode}`);

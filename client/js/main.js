@@ -269,30 +269,52 @@ class FurLabsApp {
         });
 
         this.network.on('ai:generating', (data) => {
-            document.getElementById('ai-placeholder').classList.add('hidden');
-            document.getElementById('ai-loading').classList.remove('hidden');
+            const targetId = data.targetPlayerId;
+            // Mark this fursona as generating
+            if (targetId && this.allPlayerDrawings[targetId]) {
+                this.allPlayerDrawings[targetId].isGenerating = true;
+            }
+            // Only update UI if this is the currently selected player
+            if (targetId === this.selectedPlayerId) {
+                document.getElementById('ai-placeholder').classList.add('hidden');
+                document.getElementById('ai-loading').classList.remove('hidden');
+                document.getElementById('ai-result-container').classList.add('hidden');
+            }
         });
 
         this.network.on('ai:complete', (data) => {
-            document.getElementById('ai-loading').classList.add('hidden');
-            if (data.aiImage) {
-                // Store AI image for the player
-                const targetId = data.targetPlayerId;
-                if (targetId && this.allPlayerDrawings[targetId]) {
+            const targetId = data.targetPlayerId;
+
+            // Update the stored data for this fursona
+            if (targetId && this.allPlayerDrawings[targetId]) {
+                this.allPlayerDrawings[targetId].isGenerating = false;
+                if (data.aiImage) {
                     this.allPlayerDrawings[targetId].aiImage = data.aiImage;
+                    // Store the style info used for this fursona
+                    if (data.styleInfo) {
+                        this.allPlayerDrawings[targetId].styleInfo = data.styleInfo;
+                    }
                 }
+            }
 
-                const aiResultContainer = document.getElementById('ai-result-container');
-                const aiResult = document.getElementById('ai-result');
-                aiResult.src = data.aiImage;
-                aiResultContainer.classList.remove('hidden');
+            // Only update UI if this is the currently selected player
+            if (targetId === this.selectedPlayerId) {
+                document.getElementById('ai-loading').classList.add('hidden');
+                if (data.aiImage) {
+                    const aiResultContainer = document.getElementById('ai-result-container');
+                    const aiResult = document.getElementById('ai-result');
+                    aiResult.src = data.aiImage;
+                    aiResultContainer.classList.remove('hidden');
+                    document.getElementById('ai-placeholder').classList.add('hidden');
 
-                // Display the style info
-                document.getElementById('display-art-style').textContent = this.selectedArtStyle || 'cartoon';
-                document.getElementById('display-background').textContent = this.selectedBackground || 'simple gradient';
-            } else {
-                document.getElementById('ai-placeholder').classList.remove('hidden');
-                this.showToast(data.message || 'AI generation failed', 'error');
+                    // Display the style info from the fursona owner's choices
+                    const styleInfo = data.styleInfo || {};
+                    document.getElementById('display-art-style').textContent = styleInfo.artStyle || 'cartoon';
+                    document.getElementById('display-background').textContent = styleInfo.background || 'simple gradient';
+                } else {
+                    document.getElementById('ai-placeholder').classList.remove('hidden');
+                    this.showToast(data.message || 'AI generation failed', 'error');
+                }
             }
         });
     }
@@ -979,16 +1001,25 @@ class FurLabsApp {
         document.getElementById('btn-save-gallery').disabled = false;
         document.getElementById('btn-save-gallery').textContent = 'Save to Gallery';
 
-        // Reset AI section
-        document.getElementById('ai-placeholder').classList.remove('hidden');
+        // Reset AI section - check for generating, generated, or not started
+        document.getElementById('ai-placeholder').classList.add('hidden');
         document.getElementById('ai-loading').classList.add('hidden');
         document.getElementById('ai-result-container').classList.add('hidden');
 
-        // Check if AI already generated
         if (playerData.aiImage) {
-            document.getElementById('ai-placeholder').classList.add('hidden');
+            // Already generated - show result
             document.getElementById('ai-result-container').classList.remove('hidden');
             document.getElementById('ai-result').src = playerData.aiImage;
+            // Show the style info
+            const styleInfo = playerData.styleInfo || {};
+            document.getElementById('display-art-style').textContent = styleInfo.artStyle || 'cartoon';
+            document.getElementById('display-background').textContent = styleInfo.background || 'simple gradient';
+        } else if (playerData.isGenerating) {
+            // Currently generating - show loading
+            document.getElementById('ai-loading').classList.remove('hidden');
+        } else {
+            // Not started - show placeholder
+            document.getElementById('ai-placeholder').classList.remove('hidden');
         }
     }
 
