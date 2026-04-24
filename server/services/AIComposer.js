@@ -46,10 +46,10 @@ class AIComposer {
 
         const prompt = this.buildPrompt();
 
-        // Use gemini-2.5-flash-image (Nano Banana) as the primary model
+        // Use Nano Banana Pro (Gemini 3 Pro Image) as the primary model
         const models = [
-            'gemini-2.5-flash-preview-image-generation',  // Primary: Gemini 2.5 Flash image gen
-            'gemini-2.0-flash-exp'               // Fallback
+            'gemini-3-pro-image-preview',  // Primary: Nano Banana Pro (Gemini 3 Pro Image)
+            'gemini-2.5-flash-image'       // Fallback: Nano Banana (Gemini 2.5 Flash Image)
         ];
 
         let lastError = null;

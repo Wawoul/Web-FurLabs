@@ -24,6 +24,9 @@ class Lobby {
         // Each fursona is "owned" by a player but drawn by different people
         this.playerDrawings = new Map();
 
+        // Per-fursona drawer tracking: ownerSocketId -> { head: drawerId, torso: drawerId, legs: drawerId }
+        this.playerDrawers = new Map();
+
         // Per-fursona hints: ownerSocketId -> { head: {bottom}, torso: {top, bottom}, legs: {top} }
         this.playerHints = new Map();
 
@@ -61,6 +64,13 @@ class Lobby {
             [BODY_PARTS.LEGS]: null
         });
 
+        // Initialize drawer tracking for this player's fursona
+        this.playerDrawers.set(socketId, {
+            [BODY_PARTS.HEAD]: null,
+            [BODY_PARTS.TORSO]: null,
+            [BODY_PARTS.LEGS]: null
+        });
+
         // Initialize hints storage for this player
         this.playerHints.set(socketId, {
             [BODY_PARTS.HEAD]: { bottom: null },
@@ -77,6 +87,7 @@ class Lobby {
 
         this.players.delete(socketId);
         this.playerDrawings.delete(socketId);
+        this.playerDrawers.delete(socketId);
         this.playerHints.delete(socketId);
         this.playerAIVersions.delete(socketId);
         this.roundSubmissions.delete(socketId);
@@ -188,6 +199,11 @@ class Lobby {
                 [BODY_PARTS.TORSO]: null,
                 [BODY_PARTS.LEGS]: null
             });
+            this.playerDrawers.set(socketId, {
+                [BODY_PARTS.HEAD]: null,
+                [BODY_PARTS.TORSO]: null,
+                [BODY_PARTS.LEGS]: null
+            });
             this.playerHints.set(socketId, {
                 [BODY_PARTS.HEAD]: { bottom: null },
                 [BODY_PARTS.TORSO]: { top: null, bottom: null },
@@ -215,6 +231,12 @@ class Lobby {
         const drawings = this.playerDrawings.get(targetOwnerId);
         if (drawings) {
             drawings[bodyPart] = canvasData;
+        }
+
+        // Track who drew this part
+        const drawers = this.playerDrawers.get(targetOwnerId);
+        if (drawers) {
+            drawers[bodyPart] = socketId;
         }
 
         // Store hint data for the NEXT drawer of this fursona
@@ -295,12 +317,26 @@ class Lobby {
         for (const [socketId, drawings] of this.playerDrawings) {
             const player = this.players.get(socketId);
             if (player) {
+                // Get drawer info for each part
+                const drawers = this.playerDrawers.get(socketId) || {};
+                const getDrawerName = (drawerId) => {
+                    if (!drawerId) return null;
+                    const drawer = this.players.get(drawerId);
+                    return drawer ? drawer.displayName : null;
+                };
+
                 result[socketId] = {
                     playerId: player.id,
                     playerName: player.displayName,
                     head: drawings[BODY_PARTS.HEAD],
                     torso: drawings[BODY_PARTS.TORSO],
-                    legs: drawings[BODY_PARTS.LEGS]
+                    legs: drawings[BODY_PARTS.LEGS],
+                    // Include who drew each part
+                    drawnBy: {
+                        head: getDrawerName(drawers[BODY_PARTS.HEAD]),
+                        torso: getDrawerName(drawers[BODY_PARTS.TORSO]),
+                        legs: getDrawerName(drawers[BODY_PARTS.LEGS])
+                    }
                 };
             }
         }
@@ -377,6 +413,11 @@ class Lobby {
         // Clear drawings
         for (const socketId of this.players.keys()) {
             this.playerDrawings.set(socketId, {
+                [BODY_PARTS.HEAD]: null,
+                [BODY_PARTS.TORSO]: null,
+                [BODY_PARTS.LEGS]: null
+            });
+            this.playerDrawers.set(socketId, {
                 [BODY_PARTS.HEAD]: null,
                 [BODY_PARTS.TORSO]: null,
                 [BODY_PARTS.LEGS]: null

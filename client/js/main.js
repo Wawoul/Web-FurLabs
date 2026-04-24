@@ -995,6 +995,15 @@ class FurLabsApp {
             document.getElementById('reveal-legs-img').src = playerData.legs;
         }
 
+        // Update part labels with artist credits
+        const drawnBy = playerData.drawnBy || {};
+        document.querySelector('#reveal-head .part-label').innerHTML =
+            `HEAD${drawnBy.head ? `<span class="artist-credit">by ${drawnBy.head}</span>` : ''}`;
+        document.querySelector('#reveal-torso .part-label').innerHTML =
+            `TORSO${drawnBy.torso ? `<span class="artist-credit">by ${drawnBy.torso}</span>` : ''}`;
+        document.querySelector('#reveal-legs .part-label').innerHTML =
+            `LEGS${drawnBy.legs ? `<span class="artist-credit">by ${drawnBy.legs}</span>` : ''}`;
+
         // Show continue button
         document.getElementById('reveal-continue').classList.remove('hidden');
 

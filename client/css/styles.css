@@ -1014,19 +1014,18 @@ body::before {
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
 }
 
-.artist-credit {
+.part-label .artist-credit {
+    display: block;
     font-family: 'Nunito', sans-serif;
-    color: var(--text-muted);
-    font-size: 1.2rem;
-}
-
-.artist-credit span {
-    font-family: 'Fredoka', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
     background: linear-gradient(135deg, var(--secondary-light) 0%, var(--accent) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: none;
+    margin-top: 4px;
 }
 
 .reveal-final {
