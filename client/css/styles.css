@@ -968,6 +968,72 @@ body::before {
     margin: 30px 0;
 }
 
+/* Click to Reveal Overlay */
+.reveal-click-overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border-radius: 30px;
+    padding: 60px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px dashed var(--primary);
+    margin-bottom: 30px;
+}
+
+.reveal-click-overlay:hover {
+    background: rgba(255, 107, 157, 0.1);
+    border-color: var(--accent);
+    transform: scale(1.02);
+}
+
+.reveal-click-overlay.hidden {
+    display: none;
+}
+
+.reveal-click-content {
+    text-align: center;
+}
+
+.reveal-icon {
+    font-size: 5rem;
+    font-weight: 700;
+    font-family: 'Fredoka', sans-serif;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 20px;
+    animation: pulse-icon 2s ease-in-out infinite;
+}
+
+@keyframes pulse-icon {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.reveal-click-content h3 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 2rem;
+    color: var(--text);
+    margin-bottom: 10px;
+}
+
+.reveal-click-content p {
+    color: var(--text-muted);
+    font-size: 1.1rem;
+}
+
+/* Blur hidden state for parts container */
+.reveal-parts-container.blur-hidden {
+    filter: blur(20px);
+    pointer-events: none;
+    opacity: 0.3;
+}
+
 .reveal-parts {
     display: flex;
     flex-direction: column;
