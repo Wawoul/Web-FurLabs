@@ -968,12 +968,22 @@ body::before {
     margin: 30px 0;
 }
 
+/* Reveal Content Wrapper - contains overlay and parts */
+.reveal-content-wrapper {
+    position: relative;
+    min-height: 400px;
+}
+
 /* Click to Reveal Overlay */
 .reveal-click-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 400px;
     background: var(--surface);
     backdrop-filter: blur(20px);
     border-radius: 30px;
@@ -981,17 +991,23 @@ body::before {
     cursor: pointer;
     transition: all 0.3s ease;
     border: 2px dashed var(--primary);
-    margin-bottom: 30px;
+    z-index: 100;
+    pointer-events: auto;
 }
 
 .reveal-click-overlay:hover {
-    background: rgba(255, 107, 157, 0.1);
+    background: rgba(255, 107, 157, 0.15);
     border-color: var(--accent);
-    transform: scale(1.02);
+    box-shadow: 0 0 30px rgba(255, 107, 157, 0.3);
+}
+
+.reveal-click-overlay:active {
+    transform: scale(0.98);
 }
 
 .reveal-click-overlay.hidden {
-    display: none;
+    display: none !important;
+    pointer-events: none;
 }
 
 .reveal-click-content {

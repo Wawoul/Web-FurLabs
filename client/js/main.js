@@ -555,9 +555,14 @@ class FurLabsApp {
         });
 
         // Click-to-reveal overlay
-        document.getElementById('reveal-click-overlay').addEventListener('click', () => {
-            this.revealCurrentFursona();
-        });
+        const revealOverlay = document.getElementById('reveal-click-overlay');
+        if (revealOverlay) {
+            revealOverlay.addEventListener('click', (e) => {
+                e.stopPropagation();
+                console.log('Reveal overlay clicked, selectedPlayerId:', this.selectedPlayerId);
+                this.revealCurrentFursona();
+            });
+        }
 
         // Zoom controls
         document.querySelectorAll('.zoom-btn').forEach(btn => {
@@ -1062,10 +1067,15 @@ class FurLabsApp {
     }
 
     revealCurrentFursona() {
-        if (!this.selectedPlayerId) return;
+        console.log('revealCurrentFursona called, selectedPlayerId:', this.selectedPlayerId);
+        if (!this.selectedPlayerId) {
+            console.log('No selectedPlayerId, returning');
+            return;
+        }
 
         // Mark this fursona as revealed locally
         this.revealedFursonas.add(this.selectedPlayerId);
+        console.log('Added to revealedFursonas:', this.revealedFursonas);
 
         // Re-select to show the actual content
         this.selectRevealPlayer(this.selectedPlayerId);
@@ -1102,6 +1112,10 @@ class FurLabsApp {
                     playerData.legs,
                     combinedCanvas
                 );
+
+                // Update the "Raw Fursona" title with player name
+                document.getElementById('raw-fursona-title').textContent =
+                    `${playerData.playerName}'s Fursona`;
             }
 
             const finalEl = document.getElementById('reveal-final');

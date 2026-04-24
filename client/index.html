@@ -267,30 +267,33 @@
                         </div>
                     </div>
 
-                    <!-- Click to Reveal Overlay -->
-                    <div class="reveal-click-overlay" id="reveal-click-overlay">
-                        <div class="reveal-click-content">
-                            <div class="reveal-icon">?</div>
-                            <h3>Click to Reveal!</h3>
-                            <p>See what the artists created</p>
-                        </div>
-                    </div>
-
-                    <!-- Individual Parts Reveal -->
-                    <div class="reveal-parts-container" id="reveal-parts-container">
-                        <div class="reveal-part hidden" id="reveal-head">
-                            <div class="part-label">HEAD</div>
-                            <img id="reveal-head-img" src="" alt="Head">
+                    <!-- Reveal Content Wrapper (for overlay positioning) -->
+                    <div class="reveal-content-wrapper" id="reveal-content-wrapper">
+                        <!-- Click to Reveal Overlay -->
+                        <div class="reveal-click-overlay" id="reveal-click-overlay" onclick="if(window.app) window.app.revealCurrentFursona()">
+                            <div class="reveal-click-content">
+                                <div class="reveal-icon">?</div>
+                                <h3>Click to Reveal!</h3>
+                                <p>See what the artists created</p>
+                            </div>
                         </div>
 
-                        <div class="reveal-part hidden" id="reveal-torso">
-                            <div class="part-label">TORSO</div>
-                            <img id="reveal-torso-img" src="" alt="Torso">
-                        </div>
+                        <!-- Individual Parts Reveal -->
+                        <div class="reveal-parts-container" id="reveal-parts-container">
+                            <div class="reveal-part hidden" id="reveal-head">
+                                <div class="part-label">HEAD</div>
+                                <img id="reveal-head-img" src="" alt="Head">
+                            </div>
 
-                        <div class="reveal-part hidden" id="reveal-legs">
-                            <div class="part-label">LEGS</div>
-                            <img id="reveal-legs-img" src="" alt="Legs">
+                            <div class="reveal-part hidden" id="reveal-torso">
+                                <div class="part-label">TORSO</div>
+                                <img id="reveal-torso-img" src="" alt="Torso">
+                            </div>
+
+                            <div class="reveal-part hidden" id="reveal-legs">
+                                <div class="part-label">LEGS</div>
+                                <img id="reveal-legs-img" src="" alt="Legs">
+                            </div>
                         </div>
                     </div>
 
@@ -301,7 +304,7 @@
 
                     <!-- Combined Raw Fursona -->
                     <div class="reveal-final hidden" id="reveal-final">
-                        <h3>Raw Fursona</h3>
+                        <h3 id="raw-fursona-title">Raw Fursona</h3>
                         <div class="combined-canvas-wrapper" id="combined-canvas-wrapper">
                             <canvas id="combined-canvas" width="800" height="1200"></canvas>
                         </div>
@@ -320,7 +323,7 @@
 
                         <div id="ai-placeholder">
                             <button id="btn-generate-ai" class="btn btn-primary btn-xlarge">Create in Lab!</button>
-                            <p class="ai-note">Transform your fursona with AI magic</p>
+                            <p class="ai-note">Bring your fursona to life!/p>
                         </div>
                         <div id="ai-loading" class="hidden">
                             <div class="spinner"></div>
