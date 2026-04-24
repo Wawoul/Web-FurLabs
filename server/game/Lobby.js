@@ -12,37 +12,26 @@ class Lobby {
         this.createdAt = Date.now();
         this.startedAt = null;
 
-        // Drawing storage
-        this.drawings = {
-            [BODY_PARTS.HEAD]: null,
-            [BODY_PARTS.TORSO]: null,
-            [BODY_PARTS.LEGS]: null
-        };
+        // Round-based gameplay - each player draws their OWN fursona
+        this.currentRound = 0; // 0=head, 1=torso, 2=legs
+        this.roundSubmissions = new Set(); // socketIds that submitted this round
 
-        // Hint data for edge continuity
-        this.hints = {
-            [BODY_PARTS.HEAD]: { bottom: null },
-            [BODY_PARTS.TORSO]: { top: null, bottom: null },
-            [BODY_PARTS.LEGS]: { top: null }
-        };
+        // Per-player drawing storage: playerId -> { head, torso, legs }
+        this.playerDrawings = new Map();
+
+        // Per-player hints: playerId -> { head: {bottom}, torso: {top, bottom}, legs: {top} }
+        this.playerHints = new Map();
+
+        // Per-player AI versions: playerId -> aiImage
+        this.playerAIVersions = new Map();
 
         // Timer
         this.timer = null;
         this.timeRemaining = this.drawingTime;
 
-        // AI generated version
-        this.aiVersion = null;
-
         // Style choices for AI generation
         this.artStyle = 'cartoon';
         this.background = 'simple gradient';
-
-        // Track who drew what
-        this.artistCredits = {
-            [BODY_PARTS.HEAD]: null,
-            [BODY_PARTS.TORSO]: null,
-            [BODY_PARTS.LEGS]: null
-        };
 
         // Add host
         this.addPlayer(hostSocketId, hostName, true);
@@ -61,6 +50,20 @@ class Lobby {
         player.isHost = isHost;
         this.players.set(socketId, player);
 
+        // Initialize drawing storage for this player
+        this.playerDrawings.set(socketId, {
+            [BODY_PARTS.HEAD]: null,
+            [BODY_PARTS.TORSO]: null,
+            [BODY_PARTS.LEGS]: null
+        });
+
+        // Initialize hints storage for this player
+        this.playerHints.set(socketId, {
+            [BODY_PARTS.HEAD]: { bottom: null },
+            [BODY_PARTS.TORSO]: { top: null, bottom: null },
+            [BODY_PARTS.LEGS]: { top: null }
+        });
+
         return { success: true, player };
     }
 
@@ -69,6 +72,10 @@ class Lobby {
         if (!player) return null;
 
         this.players.delete(socketId);
+        this.playerDrawings.delete(socketId);
+        this.playerHints.delete(socketId);
+        this.playerAIVersions.delete(socketId);
+        this.roundSubmissions.delete(socketId);
 
         // If host left and there are other players, assign new host
         if (player.isHost && this.players.size > 0) {
@@ -96,6 +103,12 @@ class Lobby {
         return false;
     }
 
+    resetAllReady() {
+        for (const player of this.players.values()) {
+            player.setReady(false);
+        }
+    }
+
     canStart() {
         if (this.players.size === 0) return false;
 
@@ -107,33 +120,8 @@ class Lobby {
         return true;
     }
 
-    assignParts() {
-        const players = Array.from(this.players.values());
-        const parts = [...BODY_PART_ORDER];
-
-        // Shuffle parts
-        for (let i = parts.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [parts[i], parts[j]] = [parts[j], parts[i]];
-        }
-
-        if (players.length === 1) {
-            // Solo mode - one player draws all parts sequentially
-            players[0].assignedPart = 'all';
-        } else if (players.length === 2) {
-            // Two players - first gets 2 parts, second gets 1
-            players[0].assignedPart = [parts[0], parts[2]];
-            players[1].assignedPart = [parts[1]];
-        } else {
-            // 3+ players - assign one part each, rest spectate
-            for (let i = 0; i < players.length; i++) {
-                if (i < 3) {
-                    players[i].assignedPart = [parts[i]];
-                } else {
-                    players[i].makeSpectator();
-                }
-            }
-        }
+    getCurrentBodyPart() {
+        return BODY_PART_ORDER[this.currentRound];
     }
 
     startGame() {
@@ -143,8 +131,29 @@ class Lobby {
 
         this.state = GAME_STATES.DRAWING;
         this.startedAt = Date.now();
-        this.assignParts();
+        this.currentRound = 0;
+        this.roundSubmissions.clear();
         this.timeRemaining = this.drawingTime;
+
+        // Reset all player submissions
+        for (const player of this.players.values()) {
+            player.hasSubmitted = false;
+        }
+
+        // Clear previous drawings
+        for (const socketId of this.players.keys()) {
+            this.playerDrawings.set(socketId, {
+                [BODY_PARTS.HEAD]: null,
+                [BODY_PARTS.TORSO]: null,
+                [BODY_PARTS.LEGS]: null
+            });
+            this.playerHints.set(socketId, {
+                [BODY_PARTS.HEAD]: { bottom: null },
+                [BODY_PARTS.TORSO]: { top: null, bottom: null },
+                [BODY_PARTS.LEGS]: { top: null }
+            });
+        }
+        this.playerAIVersions.clear();
 
         return { success: true };
     }
@@ -153,52 +162,93 @@ class Lobby {
         const player = this.players.get(socketId);
         if (!player) return { success: false, error: 'Player not found' };
 
-        // Store the drawing
-        this.drawings[bodyPart] = canvasData;
+        const currentPart = this.getCurrentBodyPart();
+        if (bodyPart !== currentPart) {
+            return { success: false, error: `Wrong body part. Expected ${currentPart}` };
+        }
 
-        // Track who drew this part
-        this.artistCredits[bodyPart] = player.displayName;
+        // Store this player's drawing for their own fursona
+        const drawings = this.playerDrawings.get(socketId);
+        if (drawings) {
+            drawings[bodyPart] = canvasData;
+        }
 
-        // Store hint data for adjacent parts
-        if (hintData) {
+        // Store hint data for this player's next part
+        const hints = this.playerHints.get(socketId);
+        if (hints && hintData) {
             if (bodyPart === BODY_PARTS.HEAD && hintData.bottom) {
-                this.hints[BODY_PARTS.TORSO].top = hintData.bottom;
-            } else if (bodyPart === BODY_PARTS.TORSO) {
-                if (hintData.bottom) {
-                    this.hints[BODY_PARTS.LEGS].top = hintData.bottom;
-                }
+                hints[BODY_PARTS.TORSO].top = hintData.bottom;
+            } else if (bodyPart === BODY_PARTS.TORSO && hintData.bottom) {
+                hints[BODY_PARTS.LEGS].top = hintData.bottom;
             }
         }
 
+        this.roundSubmissions.add(socketId);
         player.markSubmitted();
 
         return {
             success: true,
-            allComplete: this.allDrawingsComplete(),
+            roundComplete: this.isRoundComplete(),
             playerName: player.displayName
         };
     }
 
-    allDrawingsComplete() {
-        return this.drawings[BODY_PARTS.HEAD] !== null &&
-               this.drawings[BODY_PARTS.TORSO] !== null &&
-               this.drawings[BODY_PARTS.LEGS] !== null;
+    isRoundComplete() {
+        // All players must submit for round to complete
+        return this.roundSubmissions.size >= this.players.size;
     }
 
-    getHintsForPart(bodyPart) {
-        return this.hints[bodyPart] || {};
+    advanceRound() {
+        this.currentRound++;
+        this.roundSubmissions.clear();
+        this.timeRemaining = this.drawingTime;
+
+        // Reset all player submission status
+        for (const player of this.players.values()) {
+            player.hasSubmitted = false;
+        }
+
+        // Check if all rounds complete
+        if (this.currentRound >= BODY_PART_ORDER.length) {
+            return { complete: true };
+        }
+
+        return { complete: false, nextPart: this.getCurrentBodyPart() };
     }
 
-    getArtistCredits() {
-        return this.artistCredits;
+    getHintsForPlayer(socketId) {
+        const hints = this.playerHints.get(socketId);
+        const currentPart = this.getCurrentBodyPart();
+        return hints ? hints[currentPart] : {};
     }
 
-    getDrawings() {
-        return this.drawings;
+    getPlayerDrawings(socketId) {
+        return this.playerDrawings.get(socketId) || {};
     }
 
-    setAIVersion(imageData) {
-        this.aiVersion = imageData;
+    getAllPlayerDrawings() {
+        const result = {};
+        for (const [socketId, drawings] of this.playerDrawings) {
+            const player = this.players.get(socketId);
+            if (player) {
+                result[socketId] = {
+                    playerId: player.id,
+                    playerName: player.displayName,
+                    head: drawings[BODY_PARTS.HEAD],
+                    torso: drawings[BODY_PARTS.TORSO],
+                    legs: drawings[BODY_PARTS.LEGS]
+                };
+            }
+        }
+        return result;
+    }
+
+    setPlayerAIVersion(socketId, imageData) {
+        this.playerAIVersions.set(socketId, imageData);
+    }
+
+    getPlayerAIVersion(socketId) {
+        return this.playerAIVersions.get(socketId);
     }
 
     setStyle(artStyle, background) {
@@ -221,6 +271,34 @@ class Lobby {
         }
     }
 
+    resetForNewGame() {
+        this.state = GAME_STATES.WAITING;
+        this.currentRound = 0;
+        this.roundSubmissions.clear();
+        this.timeRemaining = this.drawingTime;
+
+        // Reset all players
+        for (const player of this.players.values()) {
+            player.setReady(false);
+            player.hasSubmitted = false;
+        }
+
+        // Clear drawings
+        for (const socketId of this.players.keys()) {
+            this.playerDrawings.set(socketId, {
+                [BODY_PARTS.HEAD]: null,
+                [BODY_PARTS.TORSO]: null,
+                [BODY_PARTS.LEGS]: null
+            });
+            this.playerHints.set(socketId, {
+                [BODY_PARTS.HEAD]: { bottom: null },
+                [BODY_PARTS.TORSO]: { top: null, bottom: null },
+                [BODY_PARTS.LEGS]: { top: null }
+            });
+        }
+        this.playerAIVersions.clear();
+    }
+
     complete() {
         this.state = GAME_STATES.COMPLETE;
     }
@@ -238,7 +316,8 @@ class Lobby {
             players,
             drawingTime: this.drawingTime,
             timeRemaining: this.timeRemaining,
-            hasAllDrawings: this.allDrawingsComplete()
+            currentRound: this.currentRound,
+            currentPart: this.getCurrentBodyPart()
         };
     }
 }

@@ -8,31 +8,33 @@ class FurLabsApp {
         this.currentScreen = 'title';
         this.lobby = null;
         this.playerId = null;
-        this.assignedParts = [];
-        this.currentPartIndex = 0;
         this.isHost = false;
 
-        // Solo mode - store drawings locally for hints
-        this.soloDrawings = {
+        // Round-based drawing state
+        this.currentRound = 0;
+        this.currentPart = 'head';
+        this.hasSubmittedThisRound = false;
+
+        // Store own drawings locally for hints
+        this.myDrawings = {
             head: null,
             torso: null,
             legs: null
         };
 
-        // Track who drew what
-        this.artistCredits = {
-            head: null,
-            torso: null,
-            legs: null
-        };
-
-        // Player submission status
+        // Player submission status for current round
         this.submissions = new Map();
 
         // Style choices
         this.selectedArtStyle = 'cartoon';
         this.selectedBackground = 'simple gradient';
         this.pendingDrawingData = null;
+
+        // Reveal state
+        this.allPlayerDrawings = {};
+        this.selectedPlayerId = null;
+        this.currentRevealStage = 0; // 0=head, 1=torso, 2=legs, 3=final
+        this.zoomLevel = 50;
 
         this.init();
     }
@@ -116,15 +118,12 @@ class FurLabsApp {
 
         // Game events
         this.network.on('game:start', (data) => {
-            this.assignedParts = data.assignedParts;
-            this.currentPartIndex = 0;
+            // Round-based: everyone draws same part
+            this.currentRound = data.round || 1;
+            this.currentPart = data.currentPart || 'head';
+            this.hasSubmittedThisRound = false;
             this.submissions.clear();
-            this.soloDrawings = { head: null, torso: null, legs: null };
-
-            // Track artist credits from player assignments
-            if (data.playerAssignments) {
-                this.artistCredits = data.playerAssignments;
-            }
+            this.myDrawings = { head: null, torso: null, legs: null };
 
             // Initialize all players as not submitted
             if (this.lobby) {
@@ -133,19 +132,65 @@ class FurLabsApp {
                 });
             }
 
-            if (data.isSpectator) {
-                this.showToast('You are spectating this round', 'info');
-                this.showScreen('drawing');
-                this.updateDrawingPlayerList();
-            } else {
-                // Store drawing data for after style selection
-                this.pendingDrawingData = {
-                    drawingTime: data.drawingTime,
-                    hints: data.hints
-                };
-                // Show style selection screen first
-                this.showStyleScreen();
+            // Store drawing data for after style selection
+            this.pendingDrawingData = {
+                drawingTime: data.drawingTime,
+                hints: data.hints,
+                round: data.round,
+                totalRounds: data.totalRounds
+            };
+            // Show style selection screen first
+            this.showStyleScreen();
+        });
+
+        this.network.on('game:nextRound', (data) => {
+            // Move to next round
+            this.currentRound = data.round;
+            this.currentPart = data.currentPart;
+            this.hasSubmittedThisRound = false;
+            this.submissions.clear();
+
+            // Reset all players as not submitted
+            if (this.lobby) {
+                this.lobby.players.forEach(p => {
+                    this.submissions.set(p.id, false);
+                });
             }
+
+            // Clear and prepare canvas for next part
+            if (this.drawingCanvas) {
+                this.drawingCanvas.clear();
+            }
+
+            this.updateDrawingLabel(this.currentPart);
+            this.updateHintDisplay(this.currentPart, data.hints);
+            this.updateDrawingPlayerList();
+
+            // Re-enable submit button
+            document.getElementById('btn-submit-drawing').disabled = false;
+            document.getElementById('btn-submit-drawing').textContent = 'Submit Drawing';
+
+            this.showToast(`Round ${data.round}: Draw the ${this.currentPart}!`, 'info');
+        });
+
+        this.network.on('lobby:newGame', (data) => {
+            // Reset for new game
+            this.lobby = data.lobby;
+            this.currentRound = 0;
+            this.currentPart = 'head';
+            this.hasSubmittedThisRound = false;
+            this.submissions.clear();
+            this.myDrawings = { head: null, torso: null, legs: null };
+            this.allPlayerDrawings = {};
+            this.selectedPlayerId = null;
+            this.currentRevealStage = 0;
+
+            // Update waiting room
+            this.updateWaitingRoom();
+            this.showScreen('waiting');
+
+            // Reset ready checkbox
+            document.getElementById('ready-checkbox').checked = false;
         });
 
         this.network.on('style:confirmed', (data) => {
@@ -181,11 +226,9 @@ class FurLabsApp {
         });
 
         this.network.on('game:reveal', (data) => {
-            // Include artist credits if provided
-            if (data.artistCredits) {
-                this.artistCredits = data.artistCredits;
-            }
-            this.showRevealScreen(data.drawings);
+            // Store all player drawings
+            this.allPlayerDrawings = data.allPlayerDrawings || {};
+            this.showRevealScreen();
         });
 
         this.network.on('ai:generating', (data) => {
@@ -196,10 +239,16 @@ class FurLabsApp {
         this.network.on('ai:complete', (data) => {
             document.getElementById('ai-loading').classList.add('hidden');
             if (data.aiImage) {
-                this.currentAIImage = data.aiImage;
+                // Store AI image for the player
+                const targetId = data.targetPlayerId;
+                if (targetId && this.allPlayerDrawings[targetId]) {
+                    this.allPlayerDrawings[targetId].aiImage = data.aiImage;
+                }
+
+                const aiResultContainer = document.getElementById('ai-result-container');
                 const aiResult = document.getElementById('ai-result');
                 aiResult.src = data.aiImage;
-                aiResult.classList.remove('hidden');
+                aiResultContainer.classList.remove('hidden');
             } else {
                 document.getElementById('ai-placeholder').classList.remove('hidden');
                 this.showToast(data.message || 'AI generation failed', 'error');
@@ -356,7 +405,7 @@ class FurLabsApp {
         });
 
         document.getElementById('btn-generate-ai').addEventListener('click', () => {
-            this.network.generateAI();
+            this.network.generateAI(this.selectedPlayerId);
         });
 
         document.getElementById('btn-download').addEventListener('click', () => {
@@ -364,11 +413,34 @@ class FurLabsApp {
             CanvasUtils.downloadCanvas(canvas, 'fursona.png');
         });
 
+        document.getElementById('btn-download-ai').addEventListener('click', () => {
+            const aiImg = document.getElementById('ai-result');
+            if (aiImg.src) {
+                const link = document.createElement('a');
+                link.href = aiImg.src;
+                link.download = 'fursona_ai.png';
+                link.click();
+            }
+        });
+
         document.getElementById('btn-new-game').addEventListener('click', () => {
-            // Reset and go back to waiting room
-            this.showScreen('waiting');
-            document.getElementById('ready-checkbox').checked = false;
-            this.network.setReady(false);
+            // Send new game request to server
+            this.network.newGame();
+        });
+
+        // Reveal continue button
+        document.getElementById('btn-reveal-continue').addEventListener('click', () => {
+            this.advanceRevealStage();
+        });
+
+        // Zoom controls
+        document.querySelectorAll('.zoom-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.zoom-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.zoomLevel = parseInt(btn.dataset.zoom);
+                this.updateZoom();
+            });
         });
 
         document.getElementById('btn-save-gallery').addEventListener('click', () => {
@@ -596,10 +668,9 @@ class FurLabsApp {
         // Initialize canvas
         this.drawingCanvas = new DrawingCanvas('drawing-canvas');
 
-        // Get current part to draw
-        const currentPart = this.getCurrentPart();
-        this.updateDrawingLabel(currentPart);
-        this.updateHintDisplay(currentPart, hints);
+        // Use current part from round state
+        this.updateDrawingLabel(this.currentPart);
+        this.updateHintDisplay(this.currentPart, hints);
         this.updateDrawingPlayerList();
 
         // Initialize timer
@@ -608,16 +679,6 @@ class FurLabsApp {
         // Reset submit button
         document.getElementById('btn-submit-drawing').disabled = false;
         document.getElementById('btn-submit-drawing').textContent = 'Submit Drawing';
-    }
-
-    getCurrentPart() {
-        if (this.assignedParts === 'all') {
-            return ['head', 'torso', 'legs'][this.currentPartIndex];
-        }
-        if (Array.isArray(this.assignedParts)) {
-            return this.assignedParts[this.currentPartIndex];
-        }
-        return this.assignedParts;
     }
 
     updateDrawingLabel(part) {
@@ -643,19 +704,19 @@ class FurLabsApp {
         if (part === 'head') {
             bottomOverlay.style.display = 'block';
         }
-        // Torso - show top hint (from head), show bottom hint zone
+        // Torso - show top hint (from own head), show bottom hint zone
         else if (part === 'torso') {
-            // Check for server hints or solo mode hints
-            const topHint = serverHints?.top || this.soloDrawings.head?.bottomHint;
+            // Use server hints or own drawings
+            const topHint = serverHints?.top || this.myDrawings.head?.bottomHint;
             if (topHint) {
                 topOverlay.style.display = 'block';
                 topOverlay.style.backgroundImage = `url(${topHint})`;
             }
             bottomOverlay.style.display = 'block';
         }
-        // Legs - show top hint (from torso), NO bottom hint
+        // Legs - show top hint (from own torso), NO bottom hint
         else if (part === 'legs') {
-            const topHint = serverHints?.top || this.soloDrawings.torso?.bottomHint;
+            const topHint = serverHints?.top || this.myDrawings.torso?.bottomHint;
             if (topHint) {
                 topOverlay.style.display = 'block';
                 topOverlay.style.backgroundImage = `url(${topHint})`;
@@ -709,137 +770,175 @@ class FurLabsApp {
     }
 
     submitCurrentDrawing() {
-        if (!this.drawingCanvas) return;
+        if (!this.drawingCanvas || this.hasSubmittedThisRound) return;
 
-        const currentPart = this.getCurrentPart();
         const canvasData = this.drawingCanvas.getCanvasData();
         const hintData = this.drawingCanvas.getHintData();
 
-        // Store for solo mode
-        this.soloDrawings[currentPart] = {
+        // Store own drawing locally for hints in next round
+        this.myDrawings[this.currentPart] = {
             image: canvasData,
             bottomHint: hintData.bottom
         };
 
-        // Track artist credit for solo mode
-        const myPlayer = this.lobby?.players.find(p => p.isHost) || { displayName: 'You' };
-        this.artistCredits[currentPart] = myPlayer.displayName;
+        // Submit to server
+        this.network.submitDrawing(this.currentPart, canvasData, hintData);
 
-        this.network.submitDrawing(currentPart, canvasData, hintData);
-
-        // Check if more parts to draw (solo/duo mode)
-        const isSoloOrDuo = this.assignedParts === 'all' ||
-            (Array.isArray(this.assignedParts) && this.assignedParts.length > 1);
-
-        if (isSoloOrDuo) {
-            const partsArray = this.assignedParts === 'all'
-                ? ['head', 'torso', 'legs']
-                : this.assignedParts;
-
-            if (this.currentPartIndex < partsArray.length - 1) {
-                this.currentPartIndex++;
-                this.drawingCanvas.clear();
-                const nextPart = this.getCurrentPart();
-                this.updateDrawingLabel(nextPart);
-                this.updateHintDisplay(nextPart, null);
-                this.showToast(`Now draw the ${nextPart}!`, 'info');
-                return;
-            }
-        }
-
-        // All parts submitted
+        // Mark as submitted for this round
+        this.hasSubmittedThisRound = true;
         document.getElementById('btn-submit-drawing').disabled = true;
         document.getElementById('btn-submit-drawing').textContent = 'Waiting for others...';
     }
 
-    async showRevealScreen(drawings) {
+    showRevealScreen() {
         this.showScreen('reveal');
-        this.currentDrawings = drawings;
-        this.currentAIImage = null;
+        this.currentRevealStage = 0;
+
+        // Build player list sidebar
+        this.buildRevealPlayerList();
+
+        // Select first player by default
+        const playerIds = Object.keys(this.allPlayerDrawings);
+        if (playerIds.length > 0) {
+            this.selectRevealPlayer(playerIds[0]);
+        }
+    }
+
+    buildRevealPlayerList() {
+        const list = document.getElementById('reveal-player-list');
+        list.innerHTML = '';
+
+        for (const [playerId, data] of Object.entries(this.allPlayerDrawings)) {
+            const li = document.createElement('li');
+            li.dataset.playerId = playerId;
+
+            const initial = data.playerName ? data.playerName.charAt(0).toUpperCase() : '?';
+
+            li.innerHTML = `
+                <span class="player-avatar">${initial}</span>
+                <span>${data.playerName || 'Player'}</span>
+            `;
+
+            li.addEventListener('click', () => {
+                this.selectRevealPlayer(playerId);
+            });
+
+            list.appendChild(li);
+        }
+    }
+
+    selectRevealPlayer(playerId) {
+        this.selectedPlayerId = playerId;
+        this.currentRevealStage = 0;
+
+        // Update sidebar selection
+        document.querySelectorAll('#reveal-player-list li').forEach(li => {
+            li.classList.toggle('active', li.dataset.playerId === playerId);
+        });
+
+        const playerData = this.allPlayerDrawings[playerId];
+        if (!playerData) return;
+
+        // Update title
+        document.getElementById('reveal-title').textContent =
+            `${playerData.playerName}'s Fursona`;
 
         // Reset all reveal elements
-        document.querySelectorAll('.reveal-part, .reveal-final').forEach(el => {
+        document.querySelectorAll('.reveal-part').forEach(el => {
             el.classList.remove('visible');
             el.classList.add('hidden');
         });
+        document.getElementById('reveal-final').classList.add('hidden');
+        document.getElementById('ai-lab-section').classList.add('hidden');
 
-        // Reset AI section
-        document.getElementById('ai-section').classList.add('hidden');
-        document.getElementById('ai-placeholder').classList.remove('hidden');
-        document.getElementById('ai-loading').classList.add('hidden');
-        document.getElementById('ai-result').classList.add('hidden');
+        // Set up images (no hint lines)
+        if (playerData.head) {
+            document.getElementById('reveal-head-img').src = playerData.head;
+        }
+        if (playerData.torso) {
+            document.getElementById('reveal-torso-img').src = playerData.torso;
+        }
+        if (playerData.legs) {
+            document.getElementById('reveal-legs-img').src = playerData.legs;
+        }
+
+        // Show continue button
+        document.getElementById('reveal-continue').classList.remove('hidden');
+
+        // Start with head reveal
+        this.showRevealPart('head');
 
         // Reset save button
         document.getElementById('btn-save-gallery').disabled = false;
         document.getElementById('btn-save-gallery').textContent = 'Save to Gallery';
 
-        // Set up individual part images with artist credits
-        if (drawings.head) {
-            document.getElementById('reveal-head-img').src = drawings.head;
-            document.getElementById('artist-head').textContent = this.artistCredits.head || 'Unknown';
+        // Reset AI section
+        document.getElementById('ai-placeholder').classList.remove('hidden');
+        document.getElementById('ai-loading').classList.add('hidden');
+        document.getElementById('ai-result-container').classList.add('hidden');
+
+        // Check if AI already generated
+        if (playerData.aiImage) {
+            document.getElementById('ai-placeholder').classList.add('hidden');
+            document.getElementById('ai-result-container').classList.remove('hidden');
+            document.getElementById('ai-result').src = playerData.aiImage;
         }
-        if (drawings.torso) {
-            document.getElementById('reveal-torso-img').src = drawings.torso;
-            document.getElementById('artist-torso').textContent = this.artistCredits.torso || 'Unknown';
+    }
+
+    showRevealPart(part) {
+        const el = document.getElementById(`reveal-${part}`);
+        if (el) {
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('visible'), 50);
         }
-        if (drawings.legs) {
-            document.getElementById('reveal-legs-img').src = drawings.legs;
-            document.getElementById('artist-legs').textContent = this.artistCredits.legs || 'Unknown';
-        }
+    }
 
-        // Combine drawings on canvas
-        const combinedCanvas = document.getElementById('combined-canvas');
-        await CanvasUtils.combineDrawings(
-            drawings.head,
-            drawings.torso,
-            drawings.legs,
-            combinedCanvas
-        );
+    async advanceRevealStage() {
+        this.currentRevealStage++;
 
-        // Animate reveal with delays
-        setTimeout(() => {
-            const headEl = document.getElementById('reveal-head');
-            headEl.classList.remove('hidden');
-            setTimeout(() => headEl.classList.add('visible'), 50);
-        }, 500);
+        if (this.currentRevealStage === 1) {
+            // Show torso
+            this.showRevealPart('torso');
+        } else if (this.currentRevealStage === 2) {
+            // Show legs
+            this.showRevealPart('legs');
+        } else if (this.currentRevealStage === 3) {
+            // Show combined canvas
+            document.getElementById('reveal-continue').classList.add('hidden');
 
-        setTimeout(() => {
-            const torsoEl = document.getElementById('reveal-torso');
-            torsoEl.classList.remove('hidden');
-            setTimeout(() => torsoEl.classList.add('visible'), 50);
-        }, 1500);
+            const playerData = this.allPlayerDrawings[this.selectedPlayerId];
+            if (playerData) {
+                // Combine drawings
+                const combinedCanvas = document.getElementById('combined-canvas');
+                await CanvasUtils.combineDrawings(
+                    playerData.head,
+                    playerData.torso,
+                    playerData.legs,
+                    combinedCanvas
+                );
+            }
 
-        setTimeout(() => {
-            const legsEl = document.getElementById('reveal-legs');
-            legsEl.classList.remove('hidden');
-            setTimeout(() => legsEl.classList.add('visible'), 50);
-        }, 2500);
-
-        setTimeout(() => {
             const finalEl = document.getElementById('reveal-final');
             finalEl.classList.remove('hidden');
             setTimeout(() => finalEl.classList.add('visible'), 50);
 
+            // Show AI Lab section
+            document.getElementById('ai-lab-section').classList.remove('hidden');
+
             // Scroll to final
-            finalEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 3500);
+            finalEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     }
 
-    // Tab switching for reveal screen
-    switchRevealTab(tab) {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
+    updateZoom() {
+        const partsContainer = document.getElementById('reveal-parts-container');
+        const canvasWrapper = document.getElementById('combined-canvas-wrapper');
 
-        const aiSection = document.getElementById('ai-section');
-        const canvas = document.getElementById('combined-canvas');
+        partsContainer.classList.remove('zoom-50', 'zoom-100');
+        partsContainer.classList.add(`zoom-${this.zoomLevel}`);
 
-        if (tab === 'ai') {
-            aiSection.classList.remove('hidden');
-            canvas.classList.add('hidden');
-        } else {
-            aiSection.classList.add('hidden');
-            canvas.classList.remove('hidden');
-        }
+        canvasWrapper.classList.remove('zoom-50', 'zoom-100');
+        canvasWrapper.classList.add(`zoom-${this.zoomLevel}`);
     }
 }
 

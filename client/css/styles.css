@@ -208,6 +208,25 @@ body::before {
     border-radius: 60px;
 }
 
+.btn-xlarge {
+    padding: 28px 90px;
+    font-size: 1.8rem;
+    border-radius: 70px;
+    background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 50%, var(--accent-warm) 100%);
+    box-shadow: 0 8px 35px rgba(124, 77, 255, 0.4), 0 0 60px rgba(255, 107, 157, 0.2);
+    animation: labButtonGlow 2s ease-in-out infinite;
+}
+
+.btn-xlarge:hover:not(:disabled) {
+    transform: translateY(-6px) scale(1.05);
+    box-shadow: 0 15px 50px rgba(124, 77, 255, 0.5), 0 0 80px rgba(255, 107, 157, 0.3);
+}
+
+@keyframes labButtonGlow {
+    0%, 100% { box-shadow: 0 8px 35px rgba(124, 77, 255, 0.4), 0 0 60px rgba(255, 107, 157, 0.2); }
+    50% { box-shadow: 0 8px 45px rgba(124, 77, 255, 0.6), 0 0 80px rgba(255, 107, 157, 0.3); }
+}
+
 /* ==================== PANELS ==================== */
 .panel {
     background: var(--surface);
@@ -757,23 +776,144 @@ body::before {
 }
 
 /* ==================== REVEAL SCREEN ==================== */
-.reveal-scroll-container {
+.reveal-layout {
+    display: flex;
+    gap: 25px;
     width: 100%;
-    max-width: 920px;
-    text-align: center;
-    padding-bottom: 120px;
+    max-width: 1150px;
 }
 
-.reveal-scroll-container h2 {
+.reveal-sidebar {
+    width: 220px;
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    padding: 25px;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: var(--shadow-card);
+    height: fit-content;
+    position: sticky;
+    top: 20px;
+}
+
+.reveal-sidebar h3 {
     font-family: 'Fredoka', sans-serif;
-    color: var(--text);
-    margin-bottom: 50px;
-    font-size: 2.4rem;
+    color: var(--secondary-light);
+    margin-bottom: 18px;
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+.reveal-sidebar ul {
+    list-style: none;
+}
+
+.reveal-sidebar li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 14px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 2px solid transparent;
+}
+
+.reveal-sidebar li:hover {
+    background: rgba(0, 0, 0, 0.3);
+    transform: translateX(5px);
+}
+
+.reveal-sidebar li.active {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(255, 107, 157, 0.2) 0%, rgba(124, 77, 255, 0.2) 100%);
+    box-shadow: 0 0 15px rgba(255, 107, 157, 0.2);
+}
+
+.reveal-sidebar li .player-avatar {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.reveal-main {
+    flex: 1;
+    text-align: center;
+    padding-bottom: 60px;
+}
+
+.reveal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.reveal-header h2 {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 2rem;
     background: linear-gradient(135deg, var(--primary-light) 0%, var(--accent) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    animation: titleBounce 2s ease-in-out infinite;
+}
+
+.zoom-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.zoom-btn {
+    font-family: 'Fredoka', sans-serif;
+    padding: 10px 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid transparent;
+    border-radius: 20px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+}
+
+.zoom-btn:hover {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.zoom-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(0, 229, 255, 0.1);
+}
+
+.reveal-parts-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+.reveal-parts-container.zoom-100 .reveal-part img {
+    max-height: none;
+    max-width: 100%;
+}
+
+.reveal-parts-container.zoom-50 .reveal-part img {
+    max-height: 200px;
+}
+
+.reveal-continue {
+    margin: 30px 0;
 }
 
 .reveal-parts {
@@ -862,7 +1002,89 @@ body::before {
     -webkit-text-fill-color: transparent;
     background-clip: text;
     margin-bottom: 30px;
-    animation: titleBounce 2s ease-in-out infinite;
+}
+
+.combined-canvas-wrapper {
+    margin: 20px 0;
+}
+
+.combined-canvas-wrapper.zoom-50 #combined-canvas {
+    max-width: 50%;
+}
+
+.combined-canvas-wrapper.zoom-100 #combined-canvas {
+    max-width: 100%;
+}
+
+/* AI Lab Section */
+.ai-lab-section {
+    background: var(--surface);
+    backdrop-filter: blur(20px);
+    border-radius: 35px;
+    padding: 50px;
+    margin-top: 40px;
+    border: 2px solid rgba(124, 77, 255, 0.3);
+    box-shadow: var(--shadow-card), 0 0 40px rgba(124, 77, 255, 0.15);
+    transform: translateY(20px);
+    opacity: 0;
+    animation: labReveal 0.6s ease-out forwards;
+}
+
+@keyframes labReveal {
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.ai-lab-divider {
+    position: relative;
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.ai-lab-divider::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--secondary), transparent);
+}
+
+.ai-lab-divider span {
+    font-family: 'Fredoka', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--secondary-light) 0%, var(--accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    position: relative;
+    padding: 0 25px;
+    background-color: var(--bg-gradient-2);
+}
+
+#ai-result-container {
+    margin-top: 20px;
+}
+
+#ai-result {
+    max-width: 100%;
+    max-height: 600px;
+    border-radius: 20px;
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4), 0 0 30px rgba(124, 77, 255, 0.2);
+}
+
+.ai-actions {
+    margin-top: 25px;
+}
+
+.new-game-section {
+    margin-top: 50px;
+    padding-top: 30px;
+    border-top: 2px solid rgba(255, 255, 255, 0.1);
 }
 
 .reveal-tabs {

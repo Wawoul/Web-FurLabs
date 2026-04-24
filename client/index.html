@@ -242,55 +242,83 @@
 
         <!-- Reveal Screen -->
         <div id="screen-reveal" class="screen">
-            <div class="reveal-scroll-container">
-                <h2>Scroll to Reveal Your Creation!</h2>
-
-                <!-- Individual Parts with Credits -->
-                <div class="reveal-parts">
-                    <div class="reveal-part hidden" id="reveal-head">
-                        <div class="part-label">HEAD</div>
-                        <img id="reveal-head-img" src="" alt="Head">
-                        <div class="artist-credit">Drawn by <span id="artist-head">???</span></div>
-                    </div>
-
-                    <div class="reveal-part hidden" id="reveal-torso">
-                        <div class="part-label">TORSO</div>
-                        <img id="reveal-torso-img" src="" alt="Torso">
-                        <div class="artist-credit">Drawn by <span id="artist-torso">???</span></div>
-                    </div>
-
-                    <div class="reveal-part hidden" id="reveal-legs">
-                        <div class="part-label">LEGS</div>
-                        <img id="reveal-legs-img" src="" alt="Legs">
-                        <div class="artist-credit">Drawn by <span id="artist-legs">???</span></div>
-                    </div>
+            <div class="reveal-layout">
+                <!-- Player Sidebar -->
+                <div class="reveal-sidebar">
+                    <h3>Fursonas</h3>
+                    <ul id="reveal-player-list"></ul>
                 </div>
 
-                <!-- Combined Result -->
-                <div class="reveal-final hidden" id="reveal-final">
-                    <h3>The Complete Fursona!</h3>
-                    <canvas id="combined-canvas" width="800" height="1200"></canvas>
-
-                    <div class="reveal-tabs">
-                        <button class="tab-btn active" data-tab="raw">Raw Combined</button>
-                        <button class="tab-btn" data-tab="ai">AI Lab Version</button>
+                <!-- Main Reveal Content -->
+                <div class="reveal-main">
+                    <div class="reveal-header">
+                        <h2 id="reveal-title">Revealing Fursona...</h2>
+                        <div class="zoom-controls">
+                            <button class="zoom-btn active" data-zoom="50">50%</button>
+                            <button class="zoom-btn" data-zoom="100">100%</button>
+                        </div>
                     </div>
 
-                    <div id="ai-section" class="ai-section hidden">
+                    <!-- Individual Parts Reveal -->
+                    <div class="reveal-parts-container" id="reveal-parts-container">
+                        <div class="reveal-part hidden" id="reveal-head">
+                            <div class="part-label">HEAD</div>
+                            <img id="reveal-head-img" src="" alt="Head">
+                        </div>
+
+                        <div class="reveal-part hidden" id="reveal-torso">
+                            <div class="part-label">TORSO</div>
+                            <img id="reveal-torso-img" src="" alt="Torso">
+                        </div>
+
+                        <div class="reveal-part hidden" id="reveal-legs">
+                            <div class="part-label">LEGS</div>
+                            <img id="reveal-legs-img" src="" alt="Legs">
+                        </div>
+                    </div>
+
+                    <!-- Continue Button -->
+                    <div class="reveal-continue" id="reveal-continue">
+                        <button id="btn-reveal-continue" class="btn btn-primary btn-large">Continue</button>
+                    </div>
+
+                    <!-- Combined Raw Fursona -->
+                    <div class="reveal-final hidden" id="reveal-final">
+                        <h3>Raw Fursona</h3>
+                        <div class="combined-canvas-wrapper" id="combined-canvas-wrapper">
+                            <canvas id="combined-canvas" width="800" height="1200"></canvas>
+                        </div>
+
+                        <div class="reveal-actions">
+                            <button id="btn-save-gallery" class="btn btn-secondary">Save to Gallery</button>
+                            <button id="btn-download" class="btn btn-secondary">Download</button>
+                        </div>
+                    </div>
+
+                    <!-- AI Lab Section - Grand Reveal at Bottom -->
+                    <div class="ai-lab-section hidden" id="ai-lab-section">
+                        <div class="ai-lab-divider">
+                            <span>The Lab</span>
+                        </div>
+
                         <div id="ai-placeholder">
-                            <button id="btn-generate-ai" class="btn btn-primary">Generate AI Lab Version</button>
-                            <p class="ai-note">Uses AI to create a cohesive character</p>
+                            <button id="btn-generate-ai" class="btn btn-primary btn-xlarge">Create in Lab!</button>
+                            <p class="ai-note">Transform your fursona with AI magic</p>
                         </div>
                         <div id="ai-loading" class="hidden">
                             <div class="spinner"></div>
-                            <p>Generating AI version...</p>
+                            <p>Creating in the Lab...</p>
                         </div>
-                        <img id="ai-result" class="hidden" alt="AI Generated Fursona">
+                        <div id="ai-result-container" class="hidden">
+                            <img id="ai-result" alt="AI Generated Fursona">
+                            <div class="ai-actions">
+                                <button id="btn-download-ai" class="btn btn-secondary">Download AI Version</button>
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="reveal-actions">
-                        <button id="btn-save-gallery" class="btn btn-secondary">Save to Gallery</button>
-                        <button id="btn-download" class="btn btn-secondary">Download</button>
+                    <!-- New Game Section -->
+                    <div class="new-game-section" id="new-game-section">
                         <button id="btn-new-game" class="btn btn-primary">New Game</button>
                     </div>
                 </div>

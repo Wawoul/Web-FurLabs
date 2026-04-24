@@ -18,16 +18,16 @@ class SocketHandler {
             socket.on('lobby:leave', () => this.handleLeaveLobby(socket));
             socket.on('lobby:ready', (data) => this.handleReady(socket, data));
             socket.on('lobby:start', () => this.handleStartGame(socket));
+            socket.on('lobby:newGame', () => this.handleNewGame(socket));
 
             // Drawing events
             socket.on('drawing:submit', (data) => this.handleDrawingSubmit(socket, data));
-            socket.on('drawing:requestHints', (data) => this.handleRequestHints(socket, data));
 
             // Style events
             socket.on('style:submit', (data) => this.handleStyleSubmit(socket, data));
 
             // AI events
-            socket.on('ai:generate', () => this.handleAIGenerate(socket));
+            socket.on('ai:generate', (data) => this.handleAIGenerate(socket, data));
 
             // Disconnect
             socket.on('disconnect', () => this.handleDisconnect(socket));
@@ -149,27 +149,31 @@ class SocketHandler {
             return;
         }
 
-        // Send game start to all players with their assignments
+        // Send game start to all players - everyone draws the same part each round
+        const currentPart = lobby.getCurrentBodyPart();
         for (const [socketId, p] of lobby.players) {
             const playerSocket = this.io.sockets.sockets.get(socketId);
             if (playerSocket) {
                 playerSocket.emit('game:start', {
-                    assignedParts: p.assignedPart,
+                    currentPart: currentPart,
                     drawingTime: lobby.drawingTime,
-                    isSpectator: p.isSpectator,
-                    hints: p.assignedPart ? lobby.getHintsForPart(
-                        Array.isArray(p.assignedPart) ? p.assignedPart[0] : p.assignedPart
-                    ) : {}
+                    round: lobby.currentRound + 1,
+                    totalRounds: BODY_PART_ORDER.length,
+                    hints: lobby.getHintsForPlayer(socketId)
                 });
             }
         }
 
         // Start timer
-        this.startTimer(lobby);
-        console.log(`Game started in lobby: ${lobby.inviteCode}`);
+        this.startRoundTimer(lobby);
+        console.log(`Game started in lobby: ${lobby.inviteCode}, Round 1: ${currentPart}`);
     }
 
-    startTimer(lobby) {
+    startRoundTimer(lobby) {
+        if (lobby.timer) {
+            clearInterval(lobby.timer);
+        }
+
         lobby.timer = setInterval(() => {
             lobby.timeRemaining--;
 
@@ -181,13 +185,29 @@ class SocketHandler {
                 clearInterval(lobby.timer);
                 lobby.timer = null;
 
-                // Force end drawing phase
-                if (!lobby.allDrawingsComplete()) {
-                    // Time's up but not all submitted - still reveal what we have
-                    this.triggerReveal(lobby);
-                }
+                // Auto-submit for players who haven't submitted
+                this.autoSubmitRound(lobby);
             }
         }, 1000);
+    }
+
+    autoSubmitRound(lobby) {
+        // For players who haven't submitted, mark them as submitted with empty/placeholder
+        for (const [socketId, player] of lobby.players) {
+            if (!lobby.roundSubmissions.has(socketId)) {
+                // Auto-submit with blank canvas
+                lobby.submitDrawing(socketId, lobby.getCurrentBodyPart(), null, null);
+
+                this.emitToLobby(lobby.inviteCode, 'game:playerSubmitted', {
+                    playerId: player.id,
+                    playerName: player.displayName,
+                    autoSubmit: true
+                });
+            }
+        }
+
+        // Advance to next round
+        this.advanceToNextRound(lobby);
     }
 
     handleDrawingSubmit(socket, data) {
@@ -212,50 +232,45 @@ class SocketHandler {
             // Notify all players someone submitted
             this.emitToLobby(lobby.inviteCode, 'game:playerSubmitted', {
                 playerId: player.id,
-                bodyPart,
                 playerName: result.playerName
             });
 
-            // Send hints to next player if applicable
-            this.sendHintsToNextPart(lobby, bodyPart);
-
-            // Check if all complete
-            if (result.allComplete) {
-                this.triggerReveal(lobby);
+            // Check if round complete
+            if (result.roundComplete) {
+                this.advanceToNextRound(lobby);
             }
         } else {
             socket.emit('drawing:error', { message: result.error });
         }
     }
 
-    sendHintsToNextPart(lobby, submittedPart) {
-        const partIndex = BODY_PART_ORDER.indexOf(submittedPart);
-        if (partIndex < BODY_PART_ORDER.length - 1) {
-            const nextPart = BODY_PART_ORDER[partIndex + 1];
+    advanceToNextRound(lobby) {
+        const result = lobby.advanceRound();
 
-            // Find player with next part
+        if (result.complete) {
+            // All rounds done - trigger reveal
+            this.triggerReveal(lobby);
+        } else {
+            // Start next round
+            const currentPart = result.nextPart;
+
+            // Send next round to all players with their hints
             for (const [socketId, player] of lobby.players) {
-                const parts = Array.isArray(player.assignedPart) ? player.assignedPart : [player.assignedPart];
-                if (parts.includes(nextPart)) {
-                    const playerSocket = this.io.sockets.sockets.get(socketId);
-                    if (playerSocket) {
-                        playerSocket.emit('drawing:hintsUpdated', {
-                            hints: lobby.getHintsForPart(nextPart)
-                        });
-                    }
+                const playerSocket = this.io.sockets.sockets.get(socketId);
+                if (playerSocket) {
+                    playerSocket.emit('game:nextRound', {
+                        currentPart: currentPart,
+                        round: lobby.currentRound + 1,
+                        totalRounds: BODY_PART_ORDER.length,
+                        hints: lobby.getHintsForPlayer(socketId)
+                    });
                 }
             }
+
+            // Start timer for new round
+            this.startRoundTimer(lobby);
+            console.log(`Round ${lobby.currentRound + 1} started: ${currentPart}`);
         }
-    }
-
-    handleRequestHints(socket, data) {
-        const lobby = this.lobbyManager.getLobbyByPlayer(socket.id);
-        if (!lobby) return;
-
-        const { bodyPart } = data;
-        socket.emit('drawing:hints', {
-            hints: lobby.getHintsForPart(bodyPart)
-        });
     }
 
     handleStyleSubmit(socket, data) {
@@ -268,7 +283,6 @@ class SocketHandler {
         const { artStyle, background } = data;
         lobby.setStyle(artStyle, background);
 
-        // Notify the player their style was set
         socket.emit('style:confirmed', { artStyle, background });
         console.log(`Style set for lobby ${lobby.inviteCode}: ${artStyle}, ${background}`);
     }
@@ -282,16 +296,18 @@ class SocketHandler {
             lobby.timer = null;
         }
 
-        // Send all drawings to everyone with artist credits
+        // Get all player drawings
+        const allDrawings = lobby.getAllPlayerDrawings();
+
+        // Send reveal data to everyone
         this.emitToLobby(lobby.inviteCode, 'game:reveal', {
-            drawings: lobby.getDrawings(),
-            artistCredits: lobby.getArtistCredits()
+            allPlayerDrawings: allDrawings
         });
 
         console.log(`Reveal triggered for lobby: ${lobby.inviteCode}`);
     }
 
-    async handleAIGenerate(socket) {
+    async handleAIGenerate(socket, data) {
         const lobby = this.lobbyManager.getLobbyByPlayer(socket.id);
         if (!lobby) {
             socket.emit('lobby:error', { message: 'Not in a lobby' });
@@ -303,20 +319,26 @@ class SocketHandler {
             return;
         }
 
+        // Generate for a specific player's fursona
+        const targetSocketId = data?.targetPlayerId || socket.id;
+
         // Check if already generated
-        if (lobby.aiVersion) {
-            this.emitToLobby(lobby.inviteCode, 'ai:complete', {
-                aiImage: lobby.aiVersion
+        const existingAI = lobby.getPlayerAIVersion(targetSocketId);
+        if (existingAI) {
+            socket.emit('ai:complete', {
+                targetPlayerId: targetSocketId,
+                aiImage: existingAI
             });
             return;
         }
 
         // Notify that AI generation is starting
-        this.emitToLobby(lobby.inviteCode, 'ai:generating', { progress: 0 });
+        socket.emit('ai:generating', { targetPlayerId: targetSocketId, progress: 0 });
 
         try {
-            const drawings = lobby.getDrawings();
+            const drawings = lobby.getPlayerDrawings(targetSocketId);
             const styleInfo = lobby.getStyleInfo();
+
             const aiImage = await this.aiComposer.composeFursona(
                 drawings.head,
                 drawings.torso,
@@ -325,19 +347,51 @@ class SocketHandler {
             );
 
             // Cache the result
-            lobby.setAIVersion(aiImage);
+            lobby.setPlayerAIVersion(targetSocketId, aiImage);
 
-            this.emitToLobby(lobby.inviteCode, 'ai:complete', {
+            // Send to the requesting player
+            socket.emit('ai:complete', {
+                targetPlayerId: targetSocketId,
                 aiImage: aiImage
             });
 
-            console.log(`AI generation complete for lobby: ${lobby.inviteCode}`);
+            console.log(`AI generation complete for player in lobby: ${lobby.inviteCode}`);
 
         } catch (error) {
             console.error('AI generation error:', error);
-            this.emitToLobby(lobby.inviteCode, 'ai:complete', {
+            socket.emit('ai:complete', {
+                targetPlayerId: targetSocketId,
                 aiImage: null,
                 message: error.message || 'AI generation failed'
+            });
+        }
+    }
+
+    handleNewGame(socket) {
+        const lobby = this.lobbyManager.getLobbyByPlayer(socket.id);
+        if (!lobby) {
+            socket.emit('lobby:error', { message: 'Not in a lobby' });
+            return;
+        }
+
+        const player = lobby.getPlayer(socket.id);
+
+        if (player.isHost) {
+            // Host initiates new game - reset lobby and notify all
+            lobby.resetForNewGame();
+
+            this.emitToLobby(lobby.inviteCode, 'lobby:newGame', {
+                lobby: lobby.serialize()
+            });
+
+            console.log(`New game initiated in lobby: ${lobby.inviteCode}`);
+        } else {
+            // Non-host player marks themselves as ready for new game
+            lobby.setPlayerReady(socket.id, true);
+
+            this.emitToLobby(lobby.inviteCode, 'lobby:readyUpdate', {
+                playerId: player.id,
+                isReady: true
             });
         }
     }

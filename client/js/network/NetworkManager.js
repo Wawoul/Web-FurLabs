@@ -91,8 +91,13 @@ class NetworkManager {
     }
 
     // AI actions
-    generateAI() {
-        this.emit('ai:generate', {});
+    generateAI(targetPlayerId) {
+        this.emit('ai:generate', { targetPlayerId });
+    }
+
+    // New game action
+    newGame() {
+        this.emit('lobby:newGame', {});
     }
 }
 
