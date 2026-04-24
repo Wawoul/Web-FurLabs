@@ -324,21 +324,34 @@ class SocketHandler {
             return;
         }
 
+        const player = lobby.getPlayer(socket.id);
+        if (!player) {
+            socket.emit('lobby:error', { message: 'Player not found' });
+            return;
+        }
+
         // Generate for a specific player's fursona
         const targetSocketId = data?.targetPlayerId || socket.id;
 
-        // Check if already generated
+        // Permission check: host can generate any, non-host only their own
+        if (!player.isHost && targetSocketId !== socket.id) {
+            socket.emit('lobby:error', { message: 'You can only generate AI for your own fursona' });
+            return;
+        }
+
+        // Check if already generated - send cached result to ALL players
         const existingAI = lobby.getPlayerAIVersion(targetSocketId);
         if (existingAI) {
-            socket.emit('ai:complete', {
+            // Broadcast to all players in lobby so everyone sees it
+            this.emitToLobby(lobby.inviteCode, 'ai:complete', {
                 targetPlayerId: targetSocketId,
                 aiImage: existingAI
             });
             return;
         }
 
-        // Notify that AI generation is starting
-        socket.emit('ai:generating', { targetPlayerId: targetSocketId, progress: 0 });
+        // Notify all players that AI generation is starting for this fursona
+        this.emitToLobby(lobby.inviteCode, 'ai:generating', { targetPlayerId: targetSocketId, progress: 0 });
 
         try {
             const drawings = lobby.getPlayerDrawings(targetSocketId);
@@ -354,8 +367,8 @@ class SocketHandler {
             // Cache the result
             lobby.setPlayerAIVersion(targetSocketId, aiImage);
 
-            // Send to the requesting player
-            socket.emit('ai:complete', {
+            // Broadcast to ALL players in lobby
+            this.emitToLobby(lobby.inviteCode, 'ai:complete', {
                 targetPlayerId: targetSocketId,
                 aiImage: aiImage
             });
@@ -364,7 +377,8 @@ class SocketHandler {
 
         } catch (error) {
             console.error('AI generation error:', error);
-            socket.emit('ai:complete', {
+            // Broadcast error to all players
+            this.emitToLobby(lobby.inviteCode, 'ai:complete', {
                 targetPlayerId: targetSocketId,
                 aiImage: null,
                 message: error.message || 'AI generation failed'

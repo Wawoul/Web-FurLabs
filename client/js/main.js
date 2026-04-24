@@ -795,36 +795,38 @@ class FurLabsApp {
         document.getElementById('drawing-part-label').textContent = label;
     }
 
-    updateHintDisplay(part, serverHints) {
+    async updateHintDisplay(part, serverHints) {
         const topOverlay = document.getElementById('hint-overlay-top');
         const bottomOverlay = document.getElementById('hint-overlay-bottom');
 
-        // Reset hints
+        // Reset overlays (we only use these as zone indicators now, not for actual hints)
         topOverlay.style.display = 'none';
         topOverlay.style.backgroundImage = '';
         bottomOverlay.style.display = 'none';
         bottomOverlay.style.backgroundImage = '';
 
-        // Head - no top hint, show bottom hint zone
+        // Head - no top hint, show bottom hint zone indicator
         if (part === 'head') {
             bottomOverlay.style.display = 'block';
+            bottomOverlay.style.backgroundImage = ''; // Just show the zone, no image
         }
-        // Torso - show top hint (from own head), show bottom hint zone
+        // Torso - draw top hint ONTO canvas (editable!), show bottom hint zone
         else if (part === 'torso') {
             // Use server hints or own drawings
             const topHint = serverHints?.top || this.myDrawings.head?.bottomHint;
-            if (topHint) {
-                topOverlay.style.display = 'block';
-                topOverlay.style.backgroundImage = `url(${topHint})`;
+            if (topHint && this.drawingCanvas) {
+                // Draw hint directly on canvas so player can edit over it
+                await this.drawingCanvas.drawHintOnCanvas('top', topHint);
             }
             bottomOverlay.style.display = 'block';
+            bottomOverlay.style.backgroundImage = ''; // Just show the zone
         }
-        // Legs - show top hint (from own torso), NO bottom hint
+        // Legs - draw top hint ONTO canvas (editable!), NO bottom hint
         else if (part === 'legs') {
             const topHint = serverHints?.top || this.myDrawings.torso?.bottomHint;
-            if (topHint) {
-                topOverlay.style.display = 'block';
-                topOverlay.style.backgroundImage = `url(${topHint})`;
+            if (topHint && this.drawingCanvas) {
+                // Draw hint directly on canvas so player can edit over it
+                await this.drawingCanvas.drawHintOnCanvas('top', topHint);
             }
             // NO bottom overlay for legs!
         }

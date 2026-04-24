@@ -109,9 +109,8 @@ class AIComposer {
                                     }
                                 ]
                             }],
-                            generationConfig: {
-                                responseModalities: ['IMAGE', 'TEXT'],
-                                responseMimeType: 'image/png'
+                            generation_config: {
+                                response_modalities: ['IMAGE', 'TEXT']
                             }
                         })
                     }

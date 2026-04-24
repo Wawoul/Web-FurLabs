@@ -193,6 +193,53 @@ class DrawingCanvas {
         document.getElementById('hint-overlay-top').style.display = 'none';
         document.getElementById('hint-overlay-bottom').style.display = 'none';
     }
+
+    /**
+     * Draw hint image directly onto the canvas (editable by player)
+     * This is the Gartic Phone approach - hint is part of the drawing
+     * @param {string} position - 'top' or 'bottom'
+     * @param {string} imageData - base64 image data
+     * @param {boolean} asInitialState - if true, reset history so this becomes the starting point
+     */
+    async drawHintOnCanvas(position, imageData, asInitialState = true) {
+        if (!imageData) return;
+
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                const hintHeight = Math.floor(this.canvas.height * 0.1); // 10% = 40px
+
+                if (position === 'top') {
+                    // Draw at the top of the canvas
+                    this.ctx.drawImage(img, 0, 0, this.canvas.width, hintHeight);
+                } else if (position === 'bottom') {
+                    // Draw at the bottom of the canvas
+                    const y = this.canvas.height - hintHeight;
+                    this.ctx.drawImage(img, 0, y, this.canvas.width, hintHeight);
+                }
+
+                if (asInitialState) {
+                    // Reset history so hint becomes the starting point
+                    // This way, undo won't remove the hint
+                    this.history = [];
+                    this.historyIndex = -1;
+                }
+                this.saveState();
+                resolve();
+            };
+            img.onerror = reject;
+            img.src = imageData;
+        });
+    }
+
+    /**
+     * Clear canvas but preserve hint at specified position
+     * Useful for clearing player's drawing while keeping hint visible
+     */
+    clearKeepingHint() {
+        // Just do a normal clear - the hint will be redrawn when needed
+        this.clear();
+    }
 }
 
 // Make available globally

@@ -701,20 +701,36 @@ body::before {
     right: 0;
     height: 40px;
     pointer-events: none;
-    background-size: contain;
-    opacity: 0.5;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 .hint-overlay.top {
     top: 0;
-    border-bottom: 3px dashed var(--primary);
-    background: linear-gradient(180deg, rgba(255, 107, 157, 0.1) 0%, transparent 100%);
+    /* Top hint is now drawn directly on canvas, this is just a zone indicator */
+    border-bottom: 2px dashed rgba(255, 107, 157, 0.5);
+    background: transparent;
 }
 
 .hint-overlay.bottom {
     bottom: 0;
+    /* Bottom zone indicator - shows where to draw for next artist */
     border-top: 3px dashed var(--primary);
-    background: linear-gradient(0deg, rgba(255, 107, 157, 0.1) 0%, transparent 100%);
+    background: linear-gradient(0deg, rgba(255, 107, 157, 0.15) 0%, transparent 100%);
+}
+
+.hint-overlay.bottom::after {
+    content: 'Hint Zone';
+    position: absolute;
+    right: 8px;
+    bottom: 4px;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 0.7rem;
+    color: var(--primary);
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 /* ==================== TOOL PALETTE ==================== */
