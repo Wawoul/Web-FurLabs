@@ -267,11 +267,14 @@ class FurLabsApp {
             // Mark this fursona as generating
             if (targetId && this.allPlayerDrawings[targetId]) {
                 this.allPlayerDrawings[targetId].isGenerating = true;
+                // Update sidebar status
+                this.updateRevealPlayerStatus(targetId);
             }
             // Only update UI if this is the currently selected player
             if (targetId === this.selectedPlayerId) {
                 document.getElementById('ai-placeholder').classList.add('hidden');
                 document.getElementById('ai-loading').classList.remove('hidden');
+                document.getElementById('ai-loading-text').textContent = 'Creating in the Lab...';
                 document.getElementById('ai-result-container').classList.add('hidden');
             }
         });
@@ -289,6 +292,8 @@ class FurLabsApp {
                         this.allPlayerDrawings[targetId].styleInfo = data.styleInfo;
                     }
                 }
+                // Update sidebar status
+                this.updateRevealPlayerStatus(targetId);
             }
 
             // Only update UI if this is the currently selected player
@@ -941,9 +946,20 @@ class FurLabsApp {
 
             const initial = data.playerName ? data.playerName.charAt(0).toUpperCase() : '?';
 
+            // AI status indicator
+            let aiStatus = '';
+            if (data.aiImage) {
+                aiStatus = '<span class="ai-status done" title="AI Ready">✓</span>';
+            } else if (data.isGenerating) {
+                aiStatus = '<span class="ai-status generating" title="Generating...">⟳</span>';
+            } else {
+                aiStatus = '<span class="ai-status queued" title="In Queue">○</span>';
+            }
+
             li.innerHTML = `
                 <span class="player-avatar">${initial}</span>
                 <span>${data.playerName || 'Player'}</span>
+                ${aiStatus}
             `;
 
             li.addEventListener('click', () => {
@@ -951,6 +967,32 @@ class FurLabsApp {
             });
 
             list.appendChild(li);
+        }
+    }
+
+    updateRevealPlayerStatus(playerId) {
+        const li = document.querySelector(`#reveal-player-list li[data-player-id="${playerId}"]`);
+        if (!li) return;
+
+        const data = this.allPlayerDrawings[playerId];
+        if (!data) return;
+
+        // Update AI status indicator
+        let statusEl = li.querySelector('.ai-status');
+        if (statusEl) {
+            if (data.aiImage) {
+                statusEl.className = 'ai-status done';
+                statusEl.textContent = '✓';
+                statusEl.title = 'AI Ready';
+            } else if (data.isGenerating) {
+                statusEl.className = 'ai-status generating';
+                statusEl.textContent = '⟳';
+                statusEl.title = 'Generating...';
+            } else {
+                statusEl.className = 'ai-status queued';
+                statusEl.textContent = '○';
+                statusEl.title = 'In Queue';
+            }
         }
     }
 
@@ -1008,7 +1050,7 @@ class FurLabsApp {
         document.getElementById('btn-save-gallery').disabled = false;
         document.getElementById('btn-save-gallery').textContent = 'Save to Gallery';
 
-        // Reset AI section - check for generating, generated, or not started
+        // Reset AI section - check for generating, generated, or queued
         document.getElementById('ai-placeholder').classList.add('hidden');
         document.getElementById('ai-loading').classList.add('hidden');
         document.getElementById('ai-result-container').classList.add('hidden');
@@ -1022,11 +1064,13 @@ class FurLabsApp {
             document.getElementById('display-art-style').textContent = styleInfo.artStyle || 'cartoon';
             document.getElementById('display-background').textContent = styleInfo.background || 'simple gradient';
         } else if (playerData.isGenerating) {
-            // Currently generating - show loading
+            // Currently generating - show loading with active message
             document.getElementById('ai-loading').classList.remove('hidden');
+            document.getElementById('ai-loading-text').textContent = 'Creating in the Lab...';
         } else {
-            // Not started - show placeholder
-            document.getElementById('ai-placeholder').classList.remove('hidden');
+            // In queue - show loading with queue message (auto-gen will get to it)
+            document.getElementById('ai-loading').classList.remove('hidden');
+            document.getElementById('ai-loading-text').textContent = 'Waiting in queue...';
         }
     }
 

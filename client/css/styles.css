@@ -898,6 +898,31 @@ body::before {
     font-size: 0.9rem;
 }
 
+/* AI Status Indicators in Sidebar */
+.reveal-sidebar li .ai-status {
+    margin-left: auto;
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+.reveal-sidebar li .ai-status.done {
+    color: #4CAF50;
+}
+
+.reveal-sidebar li .ai-status.generating {
+    color: var(--primary);
+    animation: spin 1s linear infinite;
+}
+
+.reveal-sidebar li .ai-status.queued {
+    color: var(--text-muted);
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
 .reveal-main {
     flex: 1;
     text-align: center;

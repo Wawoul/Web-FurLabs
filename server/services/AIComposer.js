@@ -236,13 +236,7 @@ class AIComposer {
         const artStyle = this.currentStyle || 'cartoon';
         const background = this.currentBackground || 'simple gradient';
 
-        return `Create a PORTRAIT orientation (tall, not wide) full-body ${artStyle} style anthro furry character ${background}.
-
-CRITICAL REQUIREMENTS:
-- Output must be PORTRAIT orientation (taller than wide, like a character portrait)
-- Keep the result as close to the original drawings as possible
-- Maintain the colors, features, and details from the original drawing
-- Place the character ${background}`;
+        return `Can you make this gartic phone image into a ${artStyle} anthro character with the background being ${background}.`;
     }
 
     /**
