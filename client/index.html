@@ -6,24 +6,45 @@
     <title>Fur-Labs - Collaborative Fursona Creator</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <!-- Ambient Background with Floating Bubbles -->
+    <div class="ambient" id="ambient"></div>
+
     <div id="app">
         <!-- Title Screen -->
         <div id="screen-title" class="screen active">
             <div class="title-container">
-                <h1 class="game-title">Fur-Labs</h1>
-                <p class="subtitle">Collaborative Fursona Creator</p>
-
-                <div class="menu-buttons">
-                    <button id="btn-create-lobby" class="btn btn-primary">Create Lobby</button>
-                    <button id="btn-join-lobby" class="btn btn-secondary">Join Lobby</button>
-                    <button id="btn-view-gallery" class="btn btn-secondary">View Gallery</button>
+                <!-- Logo -->
+                <div class="logo">
+                    <div class="logo-mark">
+                        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M9 3H15V7L17 9V12H19V15L17 17V21H7V17L5 15V12H7V9L9 7V3Z" fill="white"/>
+                            <path d="M10 14H14V18H10V14Z" fill="#14082a"/>
+                            <circle cx="11" cy="11" r="1.5" fill="#14082a"/>
+                            <circle cx="13" cy="11" r="1.5" fill="#14082a"/>
+                        </svg>
+                    </div>
+                    <span class="logo-text">Fur-Labs</span>
                 </div>
 
-                <p class="version-info">v1.2.0</p>
+                <!-- Status indicator -->
+                <div class="eyebrow" style="justify-content: center; margin-bottom: 8px;">
+                    <span class="dot dot-green"></span>
+                    <span>Lab Online</span>
+                </div>
+
+                <p class="subtitle">Where specimens collide and fursonas come alive</p>
+
+                <div class="menu-buttons">
+                    <button id="btn-create-lobby" class="btn btn-primary btn-large">Create Experiment</button>
+                    <button id="btn-join-lobby" class="btn btn-cyan btn-large">Join Lab Session</button>
+                    <button id="btn-view-gallery" class="btn btn-ghost">View Specimen Archive</button>
+                </div>
+
+                <p class="version-info"><span class="dot dot-cyan" style="width:6px;height:6px;"></span> v1.2.0 · Biogenetics Division</p>
             </div>
         </div>
 
@@ -68,28 +89,34 @@
         <!-- Waiting Room Screen -->
         <div id="screen-waiting" class="screen">
             <div class="panel waiting-panel">
+                <div class="eyebrow" style="justify-content: center; margin-bottom: 16px;">
+                    <span class="dot dot-green"></span>
+                    <span>Lab Session Active</span>
+                </div>
                 <h2>Waiting Room</h2>
+
                 <div class="invite-code-display">
-                    <span>Invite Code:</span>
+                    <span>Invite Code</span>
                     <span id="display-invite-code" class="code">------</span>
-                    <button id="btn-copy-code" class="btn btn-small">Copy</button>
+                    <button id="btn-copy-code" class="btn btn-sm btn-cyan">Copy Code</button>
                 </div>
 
                 <div class="players-list">
-                    <h3>Players</h3>
+                    <h3 class="eyebrow" style="margin-bottom: 14px;">Participants</h3>
                     <ul id="player-list"></ul>
                 </div>
 
                 <div class="ready-section">
-                    <label class="checkbox-label">
-                        <input type="checkbox" id="ready-checkbox">
-                        <span>Ready</span>
-                    </label>
+                    <div class="toggle-switch" id="ready-toggle">
+                        <span>Ready to Begin</span>
+                        <div class="toggle-track"></div>
+                        <input type="checkbox" id="ready-checkbox" style="display:none;">
+                    </div>
                 </div>
 
                 <div class="button-group">
-                    <button id="btn-leave-lobby" class="btn btn-secondary">Leave</button>
-                    <button id="btn-start-game" class="btn btn-primary" disabled>Start Game</button>
+                    <button id="btn-leave-lobby" class="btn btn-ghost">Leave Lab</button>
+                    <button id="btn-start-game" class="btn btn-primary" disabled>Begin Experiment</button>
                 </div>
             </div>
         </div>
@@ -193,7 +220,13 @@
 
                 <div class="drawing-container">
                     <div class="drawing-header">
-                        <h2 id="drawing-part-label">Draw the Head</h2>
+                        <div>
+                            <span class="badge badge-cyan" id="round-badge">ROUND 1 / 3</span>
+                            <h2 id="drawing-part-label" style="margin-top: 6px;">Draw the <span class="text-magenta">Head</span></h2>
+                            <p id="drawing-for-player" class="text-mute" style="font-size: 13px; margin-top: 4px;">
+                                For <span class="text-gold" id="target-player-name">---</span>'s specimen
+                            </p>
+                        </div>
                         <div class="timer" id="timer">3:00</div>
                     </div>
 
@@ -291,8 +324,18 @@
                         </div>
                     </div>
 
+                    <!-- Click to Reveal Overlay -->
+                    <div class="reveal-content-wrapper" id="reveal-content-wrapper">
+                        <div class="reveal-click-overlay" id="reveal-click-overlay">
+                            <div class="reveal-click-content">
+                                <div class="reveal-icon">?</div>
+                                <h3>Click to Reveal!</h3>
+                                <p>Tap anywhere to unveil this specimen</p>
+                            </div>
+                        </div>
+
                     <!-- Individual Parts Reveal -->
-                    <div class="reveal-parts-container" id="reveal-parts-container">
+                    <div class="reveal-parts-container blur-hidden" id="reveal-parts-container">
                         <div class="reveal-part hidden" id="reveal-head">
                             <div class="part-label">HEAD</div>
                             <img id="reveal-head-img" src="" alt="Head">
@@ -309,9 +352,11 @@
                         </div>
                     </div>
 
+                    </div> <!-- End reveal-content-wrapper -->
+
                     <!-- Continue Button -->
                     <div class="reveal-continue" id="reveal-continue">
-                        <button id="btn-reveal-continue" class="btn btn-primary btn-large">Continue</button>
+                        <button id="btn-reveal-continue" class="btn btn-primary btn-large">Continue to Lab</button>
                     </div>
 
                     <!-- Combined Raw Fursona -->
@@ -417,5 +462,68 @@
     <script src="js/network/NetworkManager.js"></script>
     <script src="js/ui/DrawingCanvas.js"></script>
     <script src="js/main.js"></script>
+
+    <!-- Ambient Background Bubbles & UI Enhancements -->
+    <script>
+    (function initAmbient() {
+        const ambient = document.getElementById('ambient');
+        if (!ambient) return;
+
+        const colors = [
+            'rgba(255, 61, 154, 0.15)',  // magenta
+            'rgba(61, 231, 228, 0.12)',   // cyan
+            'rgba(200, 166, 255, 0.1)',   // purple
+            'rgba(255, 180, 61, 0.08)'    // gold
+        ];
+
+        function createBubble() {
+            const bubble = document.createElement('div');
+            bubble.className = 'ambient-bubble';
+            const size = 20 + Math.random() * 80;
+            const left = Math.random() * 100;
+            const duration = 15 + Math.random() * 20;
+            const delay = Math.random() * 10;
+            const color = colors[Math.floor(Math.random() * colors.length)];
+
+            bubble.style.cssText = `
+                width: ${size}px;
+                height: ${size}px;
+                left: ${left}%;
+                bottom: -${size}px;
+                background: radial-gradient(circle at 30% 30%, ${color}, transparent 70%);
+                animation-duration: ${duration}s;
+                animation-delay: ${delay}s;
+            `;
+
+            ambient.appendChild(bubble);
+
+            setTimeout(() => {
+                bubble.remove();
+                createBubble();
+            }, (duration + delay) * 1000);
+        }
+
+        // Create initial bubbles
+        for (let i = 0; i < 8; i++) {
+            setTimeout(createBubble, i * 800);
+        }
+    })();
+
+    // Toggle switch handler
+    document.addEventListener('DOMContentLoaded', function() {
+        const readyToggle = document.getElementById('ready-toggle');
+        const readyCheckbox = document.getElementById('ready-checkbox');
+
+        if (readyToggle && readyCheckbox) {
+            readyToggle.addEventListener('click', function() {
+                readyCheckbox.checked = !readyCheckbox.checked;
+                readyToggle.classList.toggle('active', readyCheckbox.checked);
+                // Dispatch change event for existing handlers
+                readyCheckbox.dispatchEvent(new Event('change'));
+            });
+        }
+        // Note: Click-to-reveal overlay is handled in main.js setupUIHandlers
+    });
+    </script>
 </body>
 </html>

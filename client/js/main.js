@@ -586,6 +586,20 @@ class FurLabsApp {
             });
         });
 
+        // Click-to-reveal overlay handler
+        const revealOverlay = document.getElementById('reveal-click-overlay');
+        if (revealOverlay) {
+            revealOverlay.addEventListener('click', () => {
+                revealOverlay.classList.add('hidden');
+                const partsContainer = document.getElementById('reveal-parts-container');
+                if (partsContainer) {
+                    partsContainer.classList.remove('blur-hidden');
+                }
+                // Now trigger the first part reveal animation
+                this.showRevealPart('head');
+            });
+        }
+
         document.getElementById('btn-save-gallery').addEventListener('click', () => {
             this.saveToGallery();
         });
@@ -850,18 +864,28 @@ class FurLabsApp {
         };
 
         const partName = partNames[part] || 'Part';
-        let label = `Draw the ${partName}`;
 
-        // Add target fursona info if available
-        if (this.targetFursona) {
-            if (this.targetFursona.isOwnFursona) {
-                label += ' for your Fursona';
-            } else {
-                label += ` for ${this.targetFursona.ownerName}'s Fursona`;
-            }
+        // Update part label with colored span
+        const partLabel = document.getElementById('drawing-part-label');
+        if (partLabel) {
+            partLabel.innerHTML = `Draw the <span class="text-magenta">${partName}</span>`;
         }
 
-        document.getElementById('drawing-part-label').textContent = label;
+        // Update round badge
+        const roundBadge = document.getElementById('round-badge');
+        if (roundBadge && this.currentRound) {
+            roundBadge.textContent = `ROUND ${this.currentRound} / 3`;
+        }
+
+        // Update target player name
+        const targetPlayerName = document.getElementById('target-player-name');
+        if (targetPlayerName && this.targetFursona) {
+            if (this.targetFursona.isOwnFursona) {
+                targetPlayerName.textContent = 'your own';
+            } else {
+                targetPlayerName.textContent = this.targetFursona.ownerName;
+            }
+        }
     }
 
     async updateHintDisplay(part, serverHints) {
@@ -1077,6 +1101,16 @@ class FurLabsApp {
         document.getElementById('reveal-final').classList.add('hidden');
         document.getElementById('ai-lab-section').classList.add('hidden');
 
+        // Reset click-to-reveal overlay
+        const revealOverlay = document.getElementById('reveal-click-overlay');
+        const partsContainer = document.getElementById('reveal-parts-container');
+        if (revealOverlay) {
+            revealOverlay.classList.remove('hidden');
+        }
+        if (partsContainer) {
+            partsContainer.classList.add('blur-hidden');
+        }
+
         // Set up images (no hint lines)
         if (playerData.head) {
             document.getElementById('reveal-head-img').src = playerData.head;
@@ -1100,8 +1134,8 @@ class FurLabsApp {
         // Show continue button
         document.getElementById('reveal-continue').classList.remove('hidden');
 
-        // Start with head reveal
-        this.showRevealPart('head');
+        // Don't auto-reveal head - wait for overlay click
+        // The click handler in setupUIHandlers will trigger showRevealPart('head')
 
         // Reset save button
         document.getElementById('btn-save-gallery').disabled = false;
