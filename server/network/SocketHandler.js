@@ -16,6 +16,7 @@ class SocketHandler {
             socket.on('lobby:create', (data) => this.handleCreateLobby(socket, data));
             socket.on('lobby:join', (data) => this.handleJoinLobby(socket, data));
             socket.on('lobby:leave', () => this.handleLeaveLobby(socket));
+            socket.on('lobby:kick', (data) => this.handleKickPlayer(socket, data));
             socket.on('lobby:ready', (data) => this.handleReady(socket, data));
             socket.on('lobby:start', () => this.handleStartGame(socket));
             socket.on('lobby:newGame', () => this.handleNewGame(socket));
@@ -131,6 +132,76 @@ class SocketHandler {
             socket.emit('lobby:left');
             console.log(`${player.displayName} ${wasInGame ? 'quit mid-game from' : 'left'} lobby: ${lobby.inviteCode}`);
         }
+    }
+
+    handleKickPlayer(socket, data) {
+        const lobby = this.lobbyManager.getLobbyByPlayer(socket.id);
+        if (!lobby) {
+            socket.emit('lobby:error', { message: 'Not in a lobby' });
+            return;
+        }
+
+        // Only host can kick players
+        const hostPlayer = lobby.getPlayer(socket.id);
+        if (!hostPlayer || !hostPlayer.isHost) {
+            socket.emit('lobby:error', { message: 'Only the host can kick players' });
+            return;
+        }
+
+        // Can only kick before game starts
+        if (lobby.state !== GAME_STATES.WAITING) {
+            socket.emit('lobby:error', { message: 'Cannot kick players after game has started' });
+            return;
+        }
+
+        const { targetPlayerId } = data;
+        if (!targetPlayerId) {
+            socket.emit('lobby:error', { message: 'No player specified to kick' });
+            return;
+        }
+
+        // Find target player by their player.id (not socket.id)
+        let targetSocketId = null;
+        let targetPlayer = null;
+        for (const [socketId, player] of lobby.players) {
+            if (player.id === targetPlayerId) {
+                targetSocketId = socketId;
+                targetPlayer = player;
+                break;
+            }
+        }
+
+        if (!targetPlayer) {
+            socket.emit('lobby:error', { message: 'Player not found' });
+            return;
+        }
+
+        // Cannot kick yourself
+        if (targetSocketId === socket.id) {
+            socket.emit('lobby:error', { message: 'Cannot kick yourself' });
+            return;
+        }
+
+        // Remove player from lobby
+        lobby.removePlayer(targetSocketId);
+
+        // Get the target player's socket to notify them
+        const targetSocket = this.io.sockets.sockets.get(targetSocketId);
+        if (targetSocket) {
+            targetSocket.leave(`lobby:${lobby.inviteCode}`);
+            targetSocket.emit('lobby:kicked', {
+                message: 'You have been kicked from the lobby by the host'
+            });
+        }
+
+        // Notify remaining players
+        this.emitToLobby(lobby.inviteCode, 'lobby:playerLeft', {
+            playerId: targetPlayer.id,
+            playerName: targetPlayer.displayName,
+            wasKicked: true
+        });
+
+        console.log(`${targetPlayer.displayName} was kicked from lobby ${lobby.inviteCode} by ${hostPlayer.displayName}`);
     }
 
     handleReady(socket, data) {

@@ -46,6 +46,19 @@ const CanvasUtils = {
     },
 
     /**
+     * Generate a blank white canvas data URL (for missing drawings)
+     */
+    getBlankCanvasDataUrl(width = 800, height = 400) {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, width, height);
+        return canvas.toDataURL('image/png');
+    },
+
+    /**
      * Combine three body part images vertically with overlap
      * The hint areas (10% of each drawing) overlap to create seamless transitions
      * Like Gartic Phone: bottom of head overlaps with top of torso, etc.
@@ -77,28 +90,25 @@ const CanvasUtils = {
             // Center vertically in canvas (1200px canvas, 1120px content = 40px padding top/bottom)
             const startY = (targetCanvas.height - totalHeight) / 2;
 
+            // Generate blank canvas for any missing parts
+            const blankCanvas = this.getBlankCanvasDataUrl(sourceWidth, sourceHeight);
+
             // Position 1: Head at top (centered)
             let currentY = startY;
-            if (headData) {
-                const headImg = await this.loadImage(headData);
-                ctx.drawImage(headImg, 0, currentY, targetCanvas.width, scaledPartHeight);
-            }
+            const headImg = await this.loadImage(headData || blankCanvas);
+            ctx.drawImage(headImg, 0, currentY, targetCanvas.width, scaledPartHeight);
 
             // Position 2: Torso - starts where head's hint area begins (40px overlap)
             // The top of torso covers the bottom 10% of head
             currentY = startY + scaledPartHeight - scaledOverlap;
-            if (torsoData) {
-                const torsoImg = await this.loadImage(torsoData);
-                ctx.drawImage(torsoImg, 0, currentY, targetCanvas.width, scaledPartHeight);
-            }
+            const torsoImg = await this.loadImage(torsoData || blankCanvas);
+            ctx.drawImage(torsoImg, 0, currentY, targetCanvas.width, scaledPartHeight);
 
             // Position 3: Legs - starts where torso's hint area begins (40px overlap)
             // The top of legs covers the bottom 10% of torso
             currentY = startY + (scaledPartHeight - scaledOverlap) * 2;
-            if (legsData) {
-                const legsImg = await this.loadImage(legsData);
-                ctx.drawImage(legsImg, 0, currentY, targetCanvas.width, scaledPartHeight);
-            }
+            const legsImg = await this.loadImage(legsData || blankCanvas);
+            ctx.drawImage(legsImg, 0, currentY, targetCanvas.width, scaledPartHeight);
 
             // Images now overlap by 10% (40px) creating seamless connections
             console.log('Combined drawings with overlap:', {

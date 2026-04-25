@@ -68,6 +68,10 @@ class NetworkManager {
         this.emit('lobby:leave', {});
     }
 
+    kickPlayer(targetPlayerId) {
+        this.emit('lobby:kick', { targetPlayerId });
+    }
+
     setReady(isReady) {
         this.emit('lobby:ready', { isReady });
     }

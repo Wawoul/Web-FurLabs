@@ -97,8 +97,10 @@ class FurLabsApp {
             }
             this.updateWaitingRoom();
 
-            // Show appropriate toast based on whether it's a mid-game quit
-            if (data.isQuit && data.playerName) {
+            // Show appropriate toast based on the leave reason
+            if (data.wasKicked && data.playerName) {
+                this.showToast(`${data.playerName} was kicked from the lobby`, 'warning');
+            } else if (data.isQuit && data.playerName) {
                 this.showToast(`${data.playerName} quit the game`, 'warning');
                 // Update drawing player list if in drawing phase
                 this.updateDrawingPlayerList();
@@ -116,6 +118,12 @@ class FurLabsApp {
         this.network.on('lobby:left', () => {
             this.lobby = null;
             this.showScreen('title');
+        });
+
+        this.network.on('lobby:kicked', (data) => {
+            this.lobby = null;
+            this.showScreen('title');
+            this.showToast(data.message || 'You were kicked from the lobby', 'error');
         });
 
         this.network.on('lobby:error', (data) => {
@@ -421,9 +429,39 @@ class FurLabsApp {
             this.network.leaveLobby();
         });
 
+        // Back button in waiting room
+        const backWaitingBtn = document.getElementById('btn-back-waiting');
+        if (backWaitingBtn) {
+            backWaitingBtn.addEventListener('click', () => {
+                this.network.leaveLobby();
+            });
+        }
+
+        // Ready checkbox (legacy)
         document.getElementById('ready-checkbox').addEventListener('change', (e) => {
             this.network.setReady(e.target.checked);
         });
+
+        // New toggle button for ready state
+        const toggleReadyBtn = document.getElementById('toggle-ready-btn');
+        if (toggleReadyBtn) {
+            toggleReadyBtn.addEventListener('click', () => {
+                const checkbox = document.getElementById('ready-checkbox');
+                const toggleSection = document.getElementById('ready-toggle');
+                const readyTitle = document.getElementById('ready-title');
+
+                checkbox.checked = !checkbox.checked;
+                toggleSection.classList.toggle('active', checkbox.checked);
+
+                if (readyTitle) {
+                    readyTitle.textContent = checkbox.checked ?
+                        'You are ready for the experiment' :
+                        'Mark yourself ready';
+                }
+
+                this.network.setReady(checkbox.checked);
+            });
+        }
 
         document.getElementById('btn-start-game').addEventListener('click', () => {
             this.network.startGame();
@@ -792,17 +830,87 @@ class FurLabsApp {
 
         if (!this.lobby) return;
 
-        for (const player of this.lobby.players) {
+        // Update player count
+        const playerCountEl = document.getElementById('player-count');
+        if (playerCountEl) {
+            playerCountEl.textContent = `${this.lobby.players.length}/8 specimens`;
+        }
+
+        // Update ready count
+        const readyCount = this.lobby.players.filter(p => p.isReady).length;
+        const readyCountEl = document.getElementById('ready-count');
+        if (readyCountEl) {
+            readyCountEl.textContent = `${readyCount}/${this.lobby.players.length} ready`;
+        }
+
+        // Update host name
+        const host = this.lobby.players.find(p => p.isHost);
+        const hostNameEl = document.getElementById('display-host');
+        if (hostNameEl && host) {
+            hostNameEl.textContent = host.displayName;
+        }
+
+        // Update duration display if available
+        const durationEl = document.getElementById('display-duration');
+        if (durationEl && this.lobby.drawingTime) {
+            durationEl.textContent = `${this.lobby.drawingTime}s`;
+        }
+
+        // Generate avatar colors based on player index
+        const avatarColors = [
+            ['#ff3d9a', '#ff7ec0'],
+            ['#3de7e4', '#8af6f4'],
+            ['#ffb43d', '#ffc966'],
+            ['#5dffaa', '#a4ffc8'],
+            ['#c8a6ff', '#e0c8ff'],
+            ['#ff5e6c', '#ff8a94'],
+        ];
+
+        for (let i = 0; i < this.lobby.players.length; i++) {
+            const player = this.lobby.players[i];
+            const colors = avatarColors[i % avatarColors.length];
+            const initial = player.displayName.charAt(0).toUpperCase();
+
+            // Show kick button for host viewing non-host players
+            const showKickBtn = this.isHost && !player.isHost;
+
             const li = document.createElement('li');
+            li.className = player.isReady ? 'ready' : '';
             li.innerHTML = `
-                <div class="player-name">
-                    <span>${player.displayName}</span>
-                    ${player.isHost ? '<span class="host-badge">HOST</span>' : ''}
+                <div class="player-avatar" style="background: linear-gradient(135deg, ${colors[0]}, ${colors[1]});">
+                    ${initial}
                 </div>
-                <span class="${player.isReady ? 'ready-status' : 'not-ready'}">
-                    ${player.isReady ? '✓ Ready' : 'Not Ready'}
-                </span>
+                <div class="player-info">
+                    <div class="player-name">${player.displayName}</div>
+                    <div class="player-status">
+                        ${player.isHost ?
+                            '<span class="badge badge-host"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M3 7l4 4 5-7 5 7 4-4-2 12H5L3 7z"/></svg> Host</span>' :
+                            ''
+                        }
+                        ${player.isReady ?
+                            '<span class="badge badge-ready"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg> Ready</span>' :
+                            '<span class="badge" style="background:rgba(255,180,61,0.12);color:var(--gold);border:1px solid rgba(255,180,61,0.25);"><span class="dot dot-gold" style="width:6px;height:6px;"></span> Waiting</span>'
+                        }
+                    </div>
+                </div>
+                ${showKickBtn ? `
+                    <button class="btn-kick" data-player-id="${player.id}" title="Kick player">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                    </button>
+                ` : ''}
             `;
+
+            // Add click handler for kick button
+            if (showKickBtn) {
+                const kickBtn = li.querySelector('.btn-kick');
+                kickBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (confirm(`Kick ${player.displayName} from the lobby?`)) {
+                        this.network.kickPlayer(player.id);
+                    }
+                });
+            }
+
             list.appendChild(li);
         }
 
@@ -1111,16 +1219,13 @@ class FurLabsApp {
             partsContainer.classList.add('blur-hidden');
         }
 
-        // Set up images (no hint lines)
-        if (playerData.head) {
-            document.getElementById('reveal-head-img').src = playerData.head;
-        }
-        if (playerData.torso) {
-            document.getElementById('reveal-torso-img').src = playerData.torso;
-        }
-        if (playerData.legs) {
-            document.getElementById('reveal-legs-img').src = playerData.legs;
-        }
+        // Generate blank white canvas for missing drawings
+        const blankCanvas = this.getBlankCanvasDataUrl();
+
+        // Set up images - use blank canvas for missing/null drawings
+        document.getElementById('reveal-head-img').src = playerData.head || blankCanvas;
+        document.getElementById('reveal-torso-img').src = playerData.torso || blankCanvas;
+        document.getElementById('reveal-legs-img').src = playerData.legs || blankCanvas;
 
         // Update part labels with artist credits
         const drawnBy = playerData.drawnBy || {};
@@ -1227,6 +1332,20 @@ class FurLabsApp {
 
         canvasWrapper.classList.remove('zoom-50', 'zoom-100');
         canvasWrapper.classList.add(`zoom-${this.zoomLevel}`);
+    }
+
+    getBlankCanvasDataUrl() {
+        // Create an offscreen canvas with the same dimensions as drawings (800x400)
+        const canvas = document.createElement('canvas');
+        canvas.width = 800;
+        canvas.height = 400;
+        const ctx = canvas.getContext('2d');
+
+        // Fill with white
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        return canvas.toDataURL('image/png');
     }
 }
 
