@@ -43,24 +43,62 @@ class DrawingCanvas {
         // Touch events
         this.canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            this.startStroke(e.touches[0]);
-        });
+            const touch = e.touches[0];
+
+            // Handle fill and pipette on touch
+            if (this.currentTool === 'fill' || this.currentTool === 'pipette') {
+                this.handlePointAction(touch);
+            } else {
+                this.startStroke(touch);
+            }
+        }, { passive: false });
         this.canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
             this.continueStroke(e.touches[0]);
-        });
+        }, { passive: false });
         this.canvas.addEventListener('touchend', () => this.endStroke());
 
-        // Click for fill tool
+        // Click for fill and pipette tools (desktop)
         this.canvas.addEventListener('click', (e) => {
-            if (this.currentTool === 'fill') {
-                const pos = this.getPosition(e);
-                const x = Math.floor(pos.x);
-                const y = Math.floor(pos.y);
-                CanvasUtils.floodFill(this.canvas, x, y, this.currentColor);
-                this.saveState();
-            }
+            this.handlePointAction(e);
         });
+    }
+
+    /**
+     * Handle single-point actions (fill, pipette) for both mouse and touch
+     */
+    handlePointAction(e) {
+        if (this.currentTool !== 'fill' && this.currentTool !== 'pipette') return;
+
+        const pos = this.getPosition(e);
+        const x = Math.floor(pos.x);
+        const y = Math.floor(pos.y);
+
+        if (this.currentTool === 'fill') {
+            CanvasUtils.floodFill(this.canvas, x, y, this.currentColor);
+            this.saveState();
+        } else if (this.currentTool === 'pipette') {
+            const color = this.getColorAtPosition(x, y);
+            if (color) {
+                this.setColor(color);
+                // Notify external listeners about color change
+                if (this.onColorPicked) {
+                    this.onColorPicked(color);
+                }
+            }
+        }
+    }
+
+    /**
+     * Get the color at a specific pixel position
+     */
+    getColorAtPosition(x, y) {
+        const imageData = this.ctx.getImageData(x, y, 1, 1).data;
+        const r = imageData[0];
+        const g = imageData[1];
+        const b = imageData[2];
+        // Convert to hex
+        return '#' + [r, g, b].map(c => c.toString(16).padStart(2, '0')).join('');
     }
 
     getPosition(e) {
@@ -74,12 +112,16 @@ class DrawingCanvas {
     }
 
     startStroke(e) {
-        if (this.currentTool === 'fill') return;
+        if (this.currentTool === 'fill' || this.currentTool === 'pipette') return;
 
         this.isDrawing = true;
         const pos = this.getPosition(e);
         this.lastX = pos.x;
         this.lastY = pos.y;
+
+        // Ensure context is properly configured before drawing
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
 
         // Draw a dot for single clicks
         this.ctx.beginPath();
@@ -92,6 +134,10 @@ class DrawingCanvas {
         if (!this.isDrawing) return;
 
         const pos = this.getPosition(e);
+
+        // Ensure context is properly configured before drawing
+        this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
 
         this.ctx.beginPath();
         this.ctx.moveTo(this.lastX, this.lastY);
@@ -112,8 +158,22 @@ class DrawingCanvas {
     }
 
     setTool(tool) {
+        // End any current stroke when switching tools
+        if (this.isDrawing) {
+            this.isDrawing = false;
+            this.saveState();
+        }
+
         this.currentTool = tool;
-        this.canvas.style.cursor = tool === 'fill' ? 'crosshair' : 'crosshair';
+
+        // Set appropriate cursor for each tool
+        if (tool === 'pipette') {
+            this.canvas.style.cursor = 'cell';
+        } else if (tool === 'fill') {
+            this.canvas.style.cursor = 'crosshair';
+        } else {
+            this.canvas.style.cursor = 'crosshair';
+        }
     }
 
     setColor(color) {

@@ -96,6 +96,13 @@ class FurLabsApp {
                 }
             }
             this.updateWaitingRoom();
+
+            // Show appropriate toast based on whether it's a mid-game quit
+            if (data.isQuit && data.playerName) {
+                this.showToast(`${data.playerName} quit the game`, 'warning');
+                // Update drawing player list if in drawing phase
+                this.updateDrawingPlayerList();
+            }
         });
 
         this.network.on('lobby:readyUpdate', (data) => {
@@ -242,9 +249,21 @@ class FurLabsApp {
             this.submissions.set(data.playerId, true);
             this.updateDrawingPlayerList();
 
-            const player = this.lobby?.players.find(p => p.id === data.playerId);
-            if (player) {
-                this.showToast(`${player.displayName} submitted!`, 'success');
+            // Show toast - handle both active players and quit auto-submits
+            if (data.isQuit) {
+                // Player quit, auto-submitted blank
+                this.showToast(`${data.playerName} auto-submitted (quit)`, 'warning');
+            } else if (data.autoSubmit) {
+                // Time ran out
+                const player = this.lobby?.players.find(p => p.id === data.playerId);
+                if (player) {
+                    this.showToast(`${player.displayName} auto-submitted`, 'warning');
+                }
+            } else {
+                const player = this.lobby?.players.find(p => p.id === data.playerId);
+                if (player) {
+                    this.showToast(`${player.displayName} submitted!`, 'success');
+                }
             }
         });
 
@@ -801,6 +820,15 @@ class FurLabsApp {
         // Initialize canvas
         this.drawingCanvas = new DrawingCanvas('drawing-canvas');
 
+        // Set up pipette callback to update color picker UI
+        this.drawingCanvas.onColorPicked = (color) => {
+            document.getElementById('color-picker').value = color;
+            // Switch back to brush tool after picking color
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.tool-btn[data-tool="brush"]').classList.add('active');
+            this.drawingCanvas.setTool('brush');
+        };
+
         // Use current part from round state
         this.updateDrawingLabel(this.currentPart);
         this.updateHintDisplay(this.currentPart, hints);
@@ -960,7 +988,14 @@ class FurLabsApp {
             const li = document.createElement('li');
             li.dataset.playerId = playerId;
 
-            const initial = data.playerName ? data.playerName.charAt(0).toUpperCase() : '?';
+            // Add quit class if player quit mid-game
+            if (data.isQuit) {
+                li.classList.add('quit');
+            }
+
+            // Get initial from name (remove "(quit)" suffix if present)
+            const cleanName = data.playerName?.replace(' (quit)', '') || 'Player';
+            const initial = cleanName.charAt(0).toUpperCase();
 
             // AI status indicator
             let aiStatus = '';
@@ -976,7 +1011,7 @@ class FurLabsApp {
 
             li.innerHTML = `
                 <span class="player-avatar">${initial}</span>
-                <span>${data.playerName || 'Player'}</span>
+                <span>${cleanName}${data.isQuit ? ' <span class="quit-badge">(quit)</span>' : ''}</span>
                 ${aiStatus}
             `;
 

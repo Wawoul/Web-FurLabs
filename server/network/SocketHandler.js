@@ -98,6 +98,10 @@ class SocketHandler {
     }
 
     handleLeaveLobby(socket) {
+        // Check game state before leaving
+        const lobbyBefore = this.lobbyManager.getLobbyByPlayer(socket.id);
+        const wasInGame = lobbyBefore && (lobbyBefore.state === GAME_STATES.DRAWING || lobbyBefore.state === GAME_STATES.REVEALING);
+
         const result = this.lobbyManager.leaveLobby(socket.id);
 
         if (result) {
@@ -105,14 +109,27 @@ class SocketHandler {
             socket.leave(`lobby:${lobby.inviteCode}`);
 
             if (!lobbyDeleted) {
+                // Notify others - include quit info if mid-game
                 this.emitToLobby(lobby.inviteCode, 'lobby:playerLeft', {
                     playerId: player.id,
+                    playerName: player.displayName,
+                    isQuit: wasInGame, // True if they quit mid-game
                     newHost: lobby.players.values().next().value?.serialize()
                 });
+
+                // If mid-game quit, also send submission notification
+                if (wasInGame && lobby.state === GAME_STATES.DRAWING) {
+                    this.emitToLobby(lobby.inviteCode, 'game:playerSubmitted', {
+                        playerId: player.id,
+                        playerName: `${player.displayName} (quit)`,
+                        autoSubmit: true,
+                        isQuit: true
+                    });
+                }
             }
 
             socket.emit('lobby:left');
-            console.log(`${player.displayName} left lobby: ${lobby.inviteCode}`);
+            console.log(`${player.displayName} ${wasInGame ? 'quit mid-game from' : 'left'} lobby: ${lobby.inviteCode}`);
         }
     }
 
@@ -516,7 +533,21 @@ class SocketHandler {
 
     handleDisconnect(socket) {
         console.log(`Player disconnected: ${socket.id}`);
+
+        // Get lobby before leaving (to check game state after)
+        const lobby = this.lobbyManager.getLobbyByPlayer(socket.id);
+        const wasInDrawingPhase = lobby?.state === GAME_STATES.DRAWING;
+
         this.handleLeaveLobby(socket);
+
+        // If was in drawing phase, check if round should auto-complete
+        if (wasInDrawingPhase && lobby && lobby.players.size > 0) {
+            // Check if round is now complete (remaining players all submitted)
+            if (lobby.isRoundComplete()) {
+                console.log(`Round auto-completing after player disconnect`);
+                this.advanceToNextRound(lobby);
+            }
+        }
     }
 }
 

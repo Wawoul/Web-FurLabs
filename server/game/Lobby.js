@@ -36,6 +36,10 @@ class Lobby {
         // Track which fursonas are currently being generated (prevent duplicate requests)
         this.generatingInProgress = new Set();
 
+        // Track players who quit mid-game (keep their info for rotation/results)
+        // socketId -> { displayName, playerId, quitAt }
+        this.quitPlayers = new Map();
+
         // Timer
         this.timer = null;
         this.timeRemaining = this.drawingTime;
@@ -88,12 +92,46 @@ class Lobby {
         const player = this.players.get(socketId);
         if (!player) return null;
 
+        // Check if game is in progress (drawing or revealing)
+        const gameInProgress = this.state === GAME_STATES.DRAWING || this.state === GAME_STATES.REVEALING;
+
+        if (gameInProgress) {
+            // Mid-game quit: Keep player in rotation but mark as quit
+            // This preserves the Gartic Phone rotation order
+            this.quitPlayers.set(socketId, {
+                displayName: player.displayName,
+                playerId: player.id,
+                quitAt: Date.now()
+            });
+
+            // Auto-submit blank drawing for current round if they haven't submitted
+            if (this.state === GAME_STATES.DRAWING && !this.roundSubmissions.has(socketId)) {
+                this.autoSubmitForQuitPlayer(socketId, player.displayName);
+            }
+
+            // Keep playerDrawings, playerDrawers, playerHints for their fursona
+            // These are needed for the reveal screen
+            // Do NOT remove from playerOrder - this is critical for rotation!
+
+            console.log(`[Quit] Player ${player.displayName} quit mid-game, keeping in rotation`);
+        } else {
+            // Waiting room quit: Full cleanup
+            this.playerDrawings.delete(socketId);
+            this.playerDrawers.delete(socketId);
+            this.playerHints.delete(socketId);
+            this.playerStyles.delete(socketId);
+
+            // Remove from player order only in waiting room
+            const orderIndex = this.playerOrder.indexOf(socketId);
+            if (orderIndex !== -1) {
+                this.playerOrder.splice(orderIndex, 1);
+            }
+        }
+
+        // Always remove from active players
         this.players.delete(socketId);
-        this.playerDrawings.delete(socketId);
-        this.playerDrawers.delete(socketId);
-        this.playerHints.delete(socketId);
         this.playerAIVersions.delete(socketId);
-        this.roundSubmissions.delete(socketId);
+        this.generatingInProgress.delete(socketId);
 
         // If host left and there are other players, assign new host
         if (player.isHost && this.players.size > 0) {
@@ -102,6 +140,32 @@ class Lobby {
         }
 
         return player;
+    }
+
+    /**
+     * Auto-submit blank drawings for a player who quit mid-game
+     * This keeps the rotation order intact
+     */
+    autoSubmitForQuitPlayer(socketId, displayName) {
+        const currentPart = this.getCurrentBodyPart();
+        const targetOwnerId = this.getTargetFursonaOwner(socketId);
+
+        // Submit null (blank) for the current round
+        const drawings = this.playerDrawings.get(targetOwnerId);
+        if (drawings && !drawings[currentPart]) {
+            drawings[currentPart] = null; // Blank submission
+        }
+
+        // Track who "drew" this part (the quitter)
+        const drawers = this.playerDrawers.get(targetOwnerId);
+        if (drawers && !drawers[currentPart]) {
+            drawers[currentPart] = { socketId, name: `${displayName} (quit)` };
+        }
+
+        // Mark as submitted
+        this.roundSubmissions.add(socketId);
+
+        console.log(`[AutoSubmit] Blank drawing for ${displayName} (quit) on ${currentPart} for fursona ${targetOwnerId}`);
     }
 
     getPlayer(socketId) {
@@ -242,10 +306,10 @@ class Lobby {
             console.log(`[Submit] WARNING: No drawings map for target ${targetOwnerId}`);
         }
 
-        // Track who drew this part
+        // Track who drew this part - store name directly (so it persists if player leaves)
         const drawers = this.playerDrawers.get(targetOwnerId);
         if (drawers) {
-            drawers[bodyPart] = socketId;
+            drawers[bodyPart] = { socketId, name: player.displayName };
             console.log(`[Drawer] Recorded: ${player.displayName} drew ${bodyPart} for fursona ${targetOwnerId}`);
         }
 
@@ -275,8 +339,9 @@ class Lobby {
     }
 
     isRoundComplete() {
-        // All players must submit for round to complete
-        return this.roundSubmissions.size >= this.players.size;
+        // All participants (active + quit) must submit for round to complete
+        // playerOrder includes both active and quit players
+        return this.roundSubmissions.size >= this.playerOrder.length;
     }
 
     advanceRound() {
@@ -292,6 +357,11 @@ class Lobby {
         // Check if all rounds complete
         if (this.currentRound >= BODY_PART_ORDER.length) {
             return { complete: true };
+        }
+
+        // Auto-submit blank drawings for quit players in this new round
+        for (const [socketId, quitInfo] of this.quitPlayers) {
+            this.autoSubmitForQuitPlayer(socketId, quitInfo.displayName);
         }
 
         return { complete: false, nextPart: this.getCurrentBodyPart() };
@@ -310,7 +380,7 @@ class Lobby {
      */
     getTargetFursonaInfo(socketId) {
         const targetOwnerId = this.getTargetFursonaOwner(socketId);
-        const targetOwner = this.players.get(targetOwnerId);
+        const targetOwner = this.players.get(targetOwnerId) || this.quitPlayers.get(targetOwnerId);
         return {
             ownerId: targetOwnerId,
             ownerName: targetOwner ? targetOwner.displayName : 'Unknown',
@@ -324,20 +394,34 @@ class Lobby {
 
     getAllPlayerDrawings() {
         const result = {};
+
+        // Helper to get drawer name from drawer info
+        const getDrawerName = (drawerInfo) => {
+            if (!drawerInfo) return null;
+            // Support both old format (socketId only) and new format ({socketId, name})
+            if (typeof drawerInfo === 'string') {
+                const drawer = this.players.get(drawerInfo);
+                return drawer ? drawer.displayName : null;
+            }
+            return drawerInfo.name || null;
+        };
+
         for (const [socketId, drawings] of this.playerDrawings) {
             const player = this.players.get(socketId);
-            if (player) {
-                // Get drawer info for each part
+            const quitPlayer = this.quitPlayers.get(socketId);
+
+            // Include both active and quit players
+            if (player || quitPlayer) {
                 const drawers = this.playerDrawers.get(socketId) || {};
-                const getDrawerName = (drawerId) => {
-                    if (!drawerId) return null;
-                    const drawer = this.players.get(drawerId);
-                    return drawer ? drawer.displayName : null;
-                };
+                const displayName = player
+                    ? player.displayName
+                    : `${quitPlayer.displayName} (quit)`;
+                const playerId = player ? player.id : quitPlayer.playerId;
 
                 result[socketId] = {
-                    playerId: player.id,
-                    playerName: player.displayName,
+                    playerId: playerId,
+                    playerName: displayName,
+                    isQuit: !!quitPlayer,
                     head: drawings[BODY_PARTS.HEAD],
                     torso: drawings[BODY_PARTS.TORSO],
                     legs: drawings[BODY_PARTS.LEGS],
@@ -405,6 +489,9 @@ class Lobby {
         this.roundSubmissions.clear();
         this.timeRemaining = this.drawingTime;
 
+        // Clear quit players from previous game
+        this.quitPlayers.clear();
+
         // Reset all players to not ready
         for (const player of this.players.values()) {
             player.setReady(false);
@@ -427,6 +514,9 @@ class Lobby {
         this.currentRound = 0;
         this.roundSubmissions.clear();
         this.timeRemaining = this.drawingTime;
+
+        // Clear quit players from previous game
+        this.quitPlayers.clear();
 
         // Reset all players
         for (const player of this.players.values()) {

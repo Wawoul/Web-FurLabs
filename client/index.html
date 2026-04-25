@@ -204,29 +204,53 @@
                     </div>
 
                     <div class="tool-palette">
-                        <div class="tool-group">
+                        <div class="tool-group tools-main">
                             <button class="tool-btn active" data-tool="brush" title="Brush">
                                 <span class="tool-icon">&#9998;</span>
+                                <span class="tool-label">Brush</span>
                             </button>
                             <button class="tool-btn" data-tool="eraser" title="Eraser">
                                 <span class="tool-icon">&#9003;</span>
+                                <span class="tool-label">Eraser</span>
                             </button>
                             <button class="tool-btn" data-tool="fill" title="Fill">
                                 <span class="tool-icon">&#9726;</span>
+                                <span class="tool-label">Fill</span>
+                            </button>
+                            <button class="tool-btn" data-tool="pipette" title="Pick Color">
+                                <span class="tool-icon">&#128167;</span>
+                                <span class="tool-label">Pick</span>
                             </button>
                         </div>
 
-                        <div class="tool-group">
+                        <div class="tool-group colors-group">
                             <input type="color" id="color-picker" value="#000000" title="Color">
                             <div class="preset-colors">
-                                <button class="color-preset" data-color="#000000" style="background:#000000"></button>
-                                <button class="color-preset" data-color="#FFFFFF" style="background:#FFFFFF"></button>
-                                <button class="color-preset" data-color="#FF6B6B" style="background:#FF6B6B"></button>
-                                <button class="color-preset" data-color="#4ECDC4" style="background:#4ECDC4"></button>
-                                <button class="color-preset" data-color="#FFE66D" style="background:#FFE66D"></button>
-                                <button class="color-preset" data-color="#95E1D3" style="background:#95E1D3"></button>
-                                <button class="color-preset" data-color="#F38181" style="background:#F38181"></button>
-                                <button class="color-preset" data-color="#AA96DA" style="background:#AA96DA"></button>
+                                <!-- Row 1: Basic colors -->
+                                <button class="color-preset" data-color="#000000" style="background:#000000" title="Black"></button>
+                                <button class="color-preset" data-color="#FFFFFF" style="background:#FFFFFF" title="White"></button>
+                                <button class="color-preset" data-color="#808080" style="background:#808080" title="Gray"></button>
+                                <button class="color-preset" data-color="#C0C0C0" style="background:#C0C0C0" title="Silver"></button>
+                                <!-- Row 2: Primary/Secondary -->
+                                <button class="color-preset" data-color="#FF0000" style="background:#FF0000" title="Red"></button>
+                                <button class="color-preset" data-color="#00FF00" style="background:#00FF00" title="Green"></button>
+                                <button class="color-preset" data-color="#0000FF" style="background:#0000FF" title="Blue"></button>
+                                <button class="color-preset" data-color="#FFFF00" style="background:#FFFF00" title="Yellow"></button>
+                                <!-- Row 3: Warm colors -->
+                                <button class="color-preset" data-color="#FF6B6B" style="background:#FF6B6B" title="Coral"></button>
+                                <button class="color-preset" data-color="#FF8C00" style="background:#FF8C00" title="Orange"></button>
+                                <button class="color-preset" data-color="#FFD700" style="background:#FFD700" title="Gold"></button>
+                                <button class="color-preset" data-color="#F38181" style="background:#F38181" title="Salmon"></button>
+                                <!-- Row 4: Cool colors -->
+                                <button class="color-preset" data-color="#4ECDC4" style="background:#4ECDC4" title="Teal"></button>
+                                <button class="color-preset" data-color="#95E1D3" style="background:#95E1D3" title="Mint"></button>
+                                <button class="color-preset" data-color="#AA96DA" style="background:#AA96DA" title="Lavender"></button>
+                                <button class="color-preset" data-color="#9B59B6" style="background:#9B59B6" title="Purple"></button>
+                                <!-- Row 5: Skin/Fur tones -->
+                                <button class="color-preset" data-color="#8B4513" style="background:#8B4513" title="Brown"></button>
+                                <button class="color-preset" data-color="#D2691E" style="background:#D2691E" title="Chocolate"></button>
+                                <button class="color-preset" data-color="#DEB887" style="background:#DEB887" title="Tan"></button>
+                                <button class="color-preset" data-color="#FFDAB9" style="background:#FFDAB9" title="Peach"></button>
                             </div>
                         </div>
 

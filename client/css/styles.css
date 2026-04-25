@@ -688,18 +688,28 @@ body::before {
     border-radius: 24px;
     overflow: hidden;
     box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4), 0 0 0 4px rgba(255, 255, 255, 0.1);
+    /* Ensure consistent aspect ratio across devices */
+    max-width: 950px;
+    aspect-ratio: 2 / 1;
 }
 
 #drawing-canvas {
     display: block;
     cursor: crosshair;
+    width: 100%;
+    height: 100%;
+    /* Prevent default touch behaviors on canvas */
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .hint-overlay {
     position: absolute;
     left: 0;
     right: 0;
-    height: 40px;
+    height: 10%; /* 10% of canvas height to match hint area */
     pointer-events: none;
     background-size: cover;
     background-position: center;
@@ -762,14 +772,20 @@ body::before {
 }
 
 .tool-btn {
-    width: 50px;
-    height: 50px;
+    width: 60px;
+    height: 60px;
     border: 2px solid transparent;
     border-radius: 16px;
     background: rgba(0, 0, 0, 0.3);
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px;
 }
 
 .tool-btn:hover {
@@ -785,7 +801,16 @@ body::before {
 }
 
 .tool-icon {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.tool-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.9;
 }
 
 #color-picker {
@@ -798,23 +823,31 @@ body::before {
 }
 
 .preset-colors {
-    display: flex;
-    gap: 8px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    max-width: 160px;
 }
 
 .color-preset {
-    width: 34px;
-    height: 34px;
-    border: 3px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
+    width: 32px;
+    height: 32px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .color-preset:hover {
-    transform: scale(1.2) translateY(-3px);
+    transform: scale(1.15) translateY(-2px);
     border-color: rgba(255, 255, 255, 0.5);
+    z-index: 1;
+}
+
+.colors-group {
+    flex-direction: column;
+    align-items: center;
 }
 
 #brush-size {
@@ -931,6 +964,21 @@ body::before {
 
 .reveal-sidebar li .ai-status.error {
     color: var(--error);
+}
+
+/* Quit player styling */
+.reveal-sidebar li.quit {
+    opacity: 0.7;
+}
+
+.reveal-sidebar li.quit > span:nth-child(2) {
+    font-style: italic;
+}
+
+.reveal-sidebar li .quit-badge {
+    font-size: 0.65rem;
+    color: var(--warning);
+    font-weight: 600;
 }
 
 @keyframes spin {
@@ -1635,6 +1683,16 @@ body::before {
         margin-bottom: 0;
     }
 
+    /* When sidebar moves below, give canvas container full width */
+    .drawing-container {
+        max-width: 100%;
+        width: 100%;
+    }
+
+    .canvas-wrapper {
+        max-width: 100%;
+    }
+
     .game-title {
         font-size: 3.5rem;
     }
@@ -1650,31 +1708,88 @@ body::before {
         border-radius: 24px;
     }
 
+    /* Drawing screen needs minimal padding for max canvas width */
+    #screen-drawing.screen {
+        padding: 8px;
+    }
+
     .tool-palette {
         flex-direction: column;
         padding: 18px;
+        gap: 15px;
     }
 
-    /* Mobile canvas wrapper - ensure proper scaling */
+    /* Mobile tool buttons - larger touch targets */
+    .tool-btn {
+        width: 54px;
+        height: 54px;
+        min-width: 54px;
+    }
+
+    .tools-main {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    /* Mobile color presets - larger touch targets */
+    .preset-colors {
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+        max-width: 100%;
+    }
+
+    .color-preset {
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+    }
+
+    .colors-group {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+    }
+
+    #color-picker {
+        width: 45px;
+        height: 45px;
+    }
+
+    /* Mobile canvas wrapper - full width scaling */
     .canvas-wrapper {
         width: 100%;
         max-width: 100%;
         overflow: hidden;
+        /* Force 2:1 aspect ratio to match canvas internal resolution */
+        aspect-ratio: 2 / 1;
+        border-radius: 16px;
     }
 
     #drawing-canvas {
         width: 100%;
-        height: auto;
+        height: 100%;
         touch-action: none; /* Prevent scrolling while drawing */
+        /* Ensure canvas scales content proportionally */
+        object-fit: contain;
     }
 
     .drawing-container {
-        padding: 10px;
+        padding: 5px;
+        width: 100%;
+        max-width: 100%;
     }
 
     .drawing-header {
         flex-direction: column;
         gap: 10px;
+        padding: 0 5px;
+    }
+
+    /* Reveal screen also needs full width on mobile */
+    #screen-reveal.screen {
+        padding: 10px;
     }
 
     .reveal-tabs {
@@ -1683,6 +1798,28 @@ body::before {
 
     .reveal-part .part-label {
         font-size: 1.4rem;
+    }
+
+    .reveal-part {
+        padding: 20px 15px;
+    }
+
+    /* Ensure reveal images scale properly on mobile */
+    .reveal-part img {
+        max-width: 100%;
+        width: 100%;
+        height: auto;
+    }
+
+    /* Combined canvas wrapper for mobile */
+    .combined-canvas-wrapper {
+        width: 100%;
+        overflow-x: auto; /* Allow horizontal scroll if needed */
+    }
+
+    #combined-canvas {
+        max-width: 100%;
+        height: auto;
     }
 
     .reveal-final h3 {
@@ -1706,5 +1843,57 @@ body::before {
     .btn-large {
         padding: 18px 50px;
         font-size: 1.2rem;
+    }
+
+    /* AI Lab section mobile adjustments */
+    .ai-lab-section {
+        padding: 25px 15px;
+    }
+}
+
+/* Extra small screens (narrow phones) */
+@media (max-width: 400px) {
+    #screen-drawing.screen {
+        padding: 4px;
+    }
+
+    .drawing-container {
+        padding: 2px;
+    }
+
+    .drawing-header h2 {
+        font-size: 1.3rem;
+    }
+
+    .timer {
+        padding: 8px 16px;
+        font-size: 1.6rem;
+    }
+
+    .tool-palette {
+        padding: 12px;
+        gap: 10px;
+    }
+
+    .tool-btn {
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+    }
+
+    .color-preset {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+    }
+
+    .preset-colors {
+        gap: 6px;
+    }
+
+    /* Ensure reveal parts display properly */
+    .reveal-part {
+        padding: 15px 10px;
+        border-radius: 20px;
     }
 }
