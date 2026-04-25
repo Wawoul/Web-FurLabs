@@ -326,99 +326,142 @@
 
         <!-- Drawing Screen -->
         <div id="screen-drawing" class="screen">
-            <div class="drawing-layout">
-                <!-- Player Sidebar -->
-                <div class="player-sidebar">
-                    <h3>Players</h3>
-                    <ul id="drawing-player-list"></ul>
-                    <div class="waiting-indicator" id="waiting-indicator">
-                        <div class="spinner-small"></div>
-                        <span>Waiting for submissions...</span>
+            <div class="draw-screen-layout">
+                <!-- Top bar -->
+                <div class="draw-top-bar">
+                    <div class="draw-top-left">
+                        <span class="badge badge-cyan" id="round-badge">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4c8 4 8 12 16 16M20 4c-8 4-8 12-16 16"/></svg>
+                            ROUND 1 / 3
+                        </span>
+                        <div class="draw-info">
+                            <h2 id="drawing-part-label">Draw the <span class="text-magenta">Head</span></h2>
+                            <p class="text-mute">For <span class="text-gold" id="target-player-name">---</span>'s specimen · Stay within the canvas</p>
+                        </div>
+                    </div>
+                    <div class="draw-timer-box" id="timer-box">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+                        <span class="timer-display mono" id="timer">3:00</span>
                     </div>
                 </div>
 
-                <div class="drawing-container">
-                    <div class="drawing-header">
-                        <div>
-                            <span class="badge badge-cyan" id="round-badge">ROUND 1 / 3</span>
-                            <h2 id="drawing-part-label" style="margin-top: 6px;">Draw the <span class="text-magenta">Head</span></h2>
-                            <p id="drawing-for-player" class="text-mute" style="font-size: 13px; margin-top: 4px;">
-                                For <span class="text-gold" id="target-player-name">---</span>'s specimen
-                            </p>
+                <!-- 3-column layout: sidebar | canvas | tools -->
+                <div class="draw-main-grid">
+                    <!-- Player sidebar -->
+                    <div class="draw-sidebar">
+                        <div class="eyebrow">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+                            Participants
                         </div>
-                        <div class="timer" id="timer">3:00</div>
+                        <ul id="drawing-player-list" class="draw-player-list"></ul>
+                        <div class="draw-waiting-box">
+                            <div class="spinner-ring"></div>
+                            Awaiting submissions…
+                        </div>
                     </div>
 
-                    <div class="canvas-wrapper">
-                        <canvas id="drawing-canvas" width="800" height="400"></canvas>
-                        <div id="hint-overlay-top" class="hint-overlay top"></div>
-                        <div id="hint-overlay-bottom" class="hint-overlay bottom"></div>
+                    <!-- Canvas area -->
+                    <div class="draw-canvas-area">
+                        <div class="canvas-container">
+                            <div class="canvas-label-top">
+                                <span>↑ PREVIOUS ARTIST'S EDGE</span>
+                                <span class="mono">800 × 400</span>
+                            </div>
+                            <div class="canvas-wrapper">
+                                <canvas id="drawing-canvas" width="800" height="400"></canvas>
+                                <div id="hint-overlay-top" class="hint-overlay top"></div>
+                                <div id="hint-overlay-bottom" class="hint-overlay bottom">
+                                    <span>↓ HINT ZONE — DRAW HERE FOR NEXT ARTIST</span>
+                                </div>
+                            </div>
+                            <div class="canvas-label-bottom">↓ NEXT ARTIST HANDOFF</div>
+                        </div>
                     </div>
 
-                    <div class="tool-palette">
-                        <div class="tool-group tools-main">
-                            <button class="tool-btn active" data-tool="brush" title="Brush">
-                                <span class="tool-icon">&#9998;</span>
-                                <span class="tool-label">Brush</span>
-                            </button>
-                            <button class="tool-btn" data-tool="eraser" title="Eraser">
-                                <span class="tool-icon">&#9003;</span>
-                                <span class="tool-label">Eraser</span>
-                            </button>
-                            <button class="tool-btn" data-tool="fill" title="Fill">
-                                <span class="tool-icon">&#9726;</span>
-                                <span class="tool-label">Fill</span>
-                            </button>
-                            <button class="tool-btn" data-tool="pipette" title="Pick Color">
-                                <span class="tool-icon">&#128167;</span>
-                                <span class="tool-label">Pick</span>
-                            </button>
-                        </div>
-
-                        <div class="tool-group colors-group">
-                            <input type="color" id="color-picker" value="#000000" title="Color">
-                            <div class="preset-colors">
-                                <!-- Row 1: Basic colors -->
-                                <button class="color-preset" data-color="#000000" style="background:#000000" title="Black"></button>
-                                <button class="color-preset" data-color="#FFFFFF" style="background:#FFFFFF" title="White"></button>
-                                <button class="color-preset" data-color="#808080" style="background:#808080" title="Gray"></button>
-                                <button class="color-preset" data-color="#C0C0C0" style="background:#C0C0C0" title="Silver"></button>
-                                <!-- Row 2: Primary/Secondary -->
-                                <button class="color-preset" data-color="#FF0000" style="background:#FF0000" title="Red"></button>
-                                <button class="color-preset" data-color="#00FF00" style="background:#00FF00" title="Green"></button>
-                                <button class="color-preset" data-color="#0000FF" style="background:#0000FF" title="Blue"></button>
-                                <button class="color-preset" data-color="#FFFF00" style="background:#FFFF00" title="Yellow"></button>
-                                <!-- Row 3: Warm colors -->
-                                <button class="color-preset" data-color="#FF6B6B" style="background:#FF6B6B" title="Coral"></button>
-                                <button class="color-preset" data-color="#FF8C00" style="background:#FF8C00" title="Orange"></button>
-                                <button class="color-preset" data-color="#FFD700" style="background:#FFD700" title="Gold"></button>
-                                <button class="color-preset" data-color="#F38181" style="background:#F38181" title="Salmon"></button>
-                                <!-- Row 4: Cool colors -->
-                                <button class="color-preset" data-color="#4ECDC4" style="background:#4ECDC4" title="Teal"></button>
-                                <button class="color-preset" data-color="#95E1D3" style="background:#95E1D3" title="Mint"></button>
-                                <button class="color-preset" data-color="#AA96DA" style="background:#AA96DA" title="Lavender"></button>
-                                <button class="color-preset" data-color="#9B59B6" style="background:#9B59B6" title="Purple"></button>
-                                <!-- Row 5: Skin/Fur tones -->
-                                <button class="color-preset" data-color="#8B4513" style="background:#8B4513" title="Brown"></button>
-                                <button class="color-preset" data-color="#D2691E" style="background:#D2691E" title="Chocolate"></button>
-                                <button class="color-preset" data-color="#DEB887" style="background:#DEB887" title="Tan"></button>
-                                <button class="color-preset" data-color="#FFDAB9" style="background:#FFDAB9" title="Peach"></button>
+                    <!-- Tool palette (right side) -->
+                    <div class="draw-tools-panel">
+                        <div class="tool-section">
+                            <div class="eyebrow">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-9 9-4 1 1-4 6-6 0 0z"/><path d="M3 21l4-1"/></svg>
+                                Tools
+                            </div>
+                            <div class="tools-grid">
+                                <button class="tool-btn active" data-tool="brush" title="Brush">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4l6 6-9 9-4 1 1-4 6-6 0 0z"/><path d="M3 21l4-1"/></svg>
+                                </button>
+                                <button class="tool-btn" data-tool="eraser" title="Eraser">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m20 11-7 7-7-7 7-7 7 7z"/><path d="M6 18h13"/></svg>
+                                </button>
+                                <button class="tool-btn" data-tool="fill" title="Fill">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8c0-2 4-4 8-4s8 2 8 4-4 4-8 4-8-2-8-4z"/><path d="M4 8v6c0 2 4 4 8 4s8-2 8-4V8"/></svg>
+                                </button>
+                                <button class="tool-btn" data-tool="pipette" title="Pick Color">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 12-7 7v3h3l7-7M14 6l4 4M11 9l4 4M16 4l4 4-3 3-4-4 3-3z"/></svg>
+                                </button>
                             </div>
                         </div>
 
-                        <div class="tool-group">
-                            <label>Size: <span id="size-value">8</span></label>
-                            <input type="range" id="brush-size" min="1" max="50" value="8">
+                        <div class="tool-section">
+                            <div class="eyebrow">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1 0 2-1 2-2 0-1-1-2 0-3 1-1 5 0 5-4a9 9 0 0 0-7-9z"/><circle cx="7.5" cy="11" r="1" fill="currentColor"/><circle cx="11" cy="7.5" r="1" fill="currentColor"/><circle cx="15.5" cy="9" r="1" fill="currentColor"/></svg>
+                                Color
+                            </div>
+                            <div class="color-picker-row">
+                                <div id="color-preview" class="color-preview"></div>
+                                <input type="color" id="color-picker" value="#000000">
+                            </div>
+                            <div class="preset-colors">
+                                <button class="color-preset" data-color="#000000" style="background:#000000"></button>
+                                <button class="color-preset" data-color="#ffffff" style="background:#ffffff"></button>
+                                <button class="color-preset" data-color="#9ca3af" style="background:#9ca3af"></button>
+                                <button class="color-preset" data-color="#525f7f" style="background:#525f7f"></button>
+                                <button class="color-preset" data-color="#ff3d9a" style="background:#ff3d9a"></button>
+                                <button class="color-preset" data-color="#ff5e6c" style="background:#ff5e6c"></button>
+                                <button class="color-preset" data-color="#ffb43d" style="background:#ffb43d"></button>
+                                <button class="color-preset" data-color="#ffc857" style="background:#ffc857"></button>
+                                <button class="color-preset" data-color="#5dffaa" style="background:#5dffaa"></button>
+                                <button class="color-preset" data-color="#3de7e4" style="background:#3de7e4"></button>
+                                <button class="color-preset" data-color="#c8a6ff" style="background:#c8a6ff"></button>
+                                <button class="color-preset" data-color="#a78bfa" style="background:#a78bfa"></button>
+                                <button class="color-preset" data-color="#8b4513" style="background:#8b4513"></button>
+                                <button class="color-preset" data-color="#a0522d" style="background:#a0522d"></button>
+                                <button class="color-preset" data-color="#d2b48c" style="background:#d2b48c"></button>
+                                <button class="color-preset" data-color="#ffe4b5" style="background:#ffe4b5"></button>
+                                <button class="color-preset" data-color="#fef3c7" style="background:#fef3c7"></button>
+                                <button class="color-preset" data-color="#fdba74" style="background:#fdba74"></button>
+                                <button class="color-preset" data-color="#fb7185" style="background:#fb7185"></button>
+                                <button class="color-preset" data-color="#f0abfc" style="background:#f0abfc"></button>
+                            </div>
                         </div>
 
-                        <div class="tool-group">
-                            <button id="btn-undo" class="btn btn-small">Undo</button>
-                            <button id="btn-clear" class="btn btn-small">Clear</button>
+                        <div class="tool-section">
+                            <div class="eyebrow">● Brush Size</div>
+                            <div class="size-slider-row">
+                                <input type="range" id="brush-size" min="1" max="40" value="8">
+                                <div class="size-preview-box">
+                                    <div class="size-dot" id="size-dot"></div>
+                                </div>
+                            </div>
+                            <div class="size-value mono"><span id="size-value">8</span>px</div>
                         </div>
-                    </div>
 
-                    <div class="submit-section">
-                        <button id="btn-submit-drawing" class="btn btn-primary btn-large">Submit Drawing</button>
+                        <div class="tool-section tool-actions">
+                            <button id="btn-undo" class="btn btn-secondary btn-sm">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h11a5 5 0 0 1 0 10h-3M3 10l4-4M3 10l4 4"/></svg>
+                                Undo
+                            </button>
+                            <button id="btn-clear" class="btn btn-danger btn-sm">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                                Clear
+                            </button>
+                        </div>
+
+                        <div class="tool-section submit-section">
+                            <button id="btn-submit-drawing" class="btn btn-primary">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2z" opacity="0.95"/><circle cx="19" cy="19" r="1.5"/><circle cx="5" cy="18" r="1"/></svg>
+                                Submit Sample
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -426,101 +469,255 @@
 
         <!-- Reveal Screen -->
         <div id="screen-reveal" class="screen">
-            <div class="reveal-layout">
-                <!-- Player Sidebar -->
-                <div class="reveal-sidebar">
-                    <h3>Fursonas</h3>
-                    <ul id="reveal-player-list"></ul>
+            <div class="reveal-screen-layout">
+                <!-- Header Bar -->
+                <div class="reveal-header-bar">
+                    <div class="reveal-header-left">
+                        <button id="btn-back-reveal" class="btn-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                        </button>
+                        <div class="reveal-header-info">
+                            <div class="eyebrow">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2z"/></svg>
+                                Lab Results · Specimen <span id="reveal-specimen-num">01</span> of <span id="reveal-specimen-total">4</span>
+                            </div>
+                            <h2 id="reveal-title">Dr. Whiskers's Specimen</h2>
+                        </div>
+                    </div>
+                    <div class="reveal-header-actions">
+                        <button id="btn-reveal-all" class="btn btn-secondary btn-sm">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2z"/></svg>
+                            Reveal all
+                        </button>
+                        <button id="btn-new-game" class="btn btn-primary btn-sm">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8V4z"/></svg>
+                            New Experiment
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Main Reveal Content -->
-                <div class="reveal-main">
-                    <div class="reveal-header">
-                        <h2 id="reveal-title">Revealing Fursona...</h2>
-                        <div class="zoom-controls">
-                            <button class="zoom-btn active" data-zoom="50">50%</button>
-                            <button class="zoom-btn" data-zoom="100">100%</button>
+                <!-- 3-Column Grid -->
+                <div class="reveal-main-grid">
+                    <!-- Left: Specimens Sidebar -->
+                    <div class="reveal-sidebar">
+                        <div class="eyebrow">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4c8 4 8 12 16 16M20 4c-8 4-8 12-16 16"/></svg>
+                            Specimens
+                        </div>
+                        <ul id="reveal-player-list" class="specimen-list"></ul>
+                    </div>
+
+                    <!-- Middle: Part Reveals -->
+                    <div class="reveal-parts-column">
+                        <div class="reveal-parts-header">
+                            <h3>Specimen components</h3>
+                            <span class="mono text-dim">3 PARTS · CLICK TO UNLOCK</span>
+                        </div>
+                        <div class="reveal-parts-stack" id="reveal-parts-stack">
+                            <!-- Part 1: Head -->
+                            <div class="part-reveal-card" id="part-card-head" data-part="head">
+                                <div class="part-card-header">
+                                    <div class="part-badge" style="--part-color: #ff3d9a;">
+                                        <span class="part-num">1</span>
+                                    </div>
+                                    <div class="part-info">
+                                        <div class="part-type" style="color: #ff3d9a;">HEAD</div>
+                                        <div class="part-artist">Drawn by <span id="head-artist" class="text-gold">---</span></div>
+                                    </div>
+                                    <button class="btn btn-secondary btn-sm part-zoom-btn hidden">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2z"/></svg>
+                                        Zoom
+                                    </button>
+                                </div>
+                                <div class="part-card-content">
+                                    <div class="part-locked-overlay">
+                                        <div class="locked-icon">
+                                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M4 4c8 4 8 12 16 16M20 4c-8 4-8 12-16 16"/></svg>
+                                        </div>
+                                        <div class="locked-text">Click to Reveal</div>
+                                        <div class="locked-id mono">SAMPLE-01-LOCKED</div>
+                                    </div>
+                                    <img id="reveal-head-img" class="part-image" src="" alt="Head">
+                                </div>
+                            </div>
+
+                            <!-- Part 2: Torso -->
+                            <div class="part-reveal-card" id="part-card-torso" data-part="torso">
+                                <div class="part-card-header">
+                                    <div class="part-badge" style="--part-color: #3de7e4;">
+                                        <span class="part-num">2</span>
+                                    </div>
+                                    <div class="part-info">
+                                        <div class="part-type" style="color: #3de7e4;">TORSO</div>
+                                        <div class="part-artist">Drawn by <span id="torso-artist" class="text-gold">---</span></div>
+                                    </div>
+                                    <button class="btn btn-secondary btn-sm part-zoom-btn hidden">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2z"/></svg>
+                                        Zoom
+                                    </button>
+                                </div>
+                                <div class="part-card-content">
+                                    <div class="part-locked-overlay">
+                                        <div class="locked-icon">
+                                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M4 4c8 4 8 12 16 16M20 4c-8 4-8 12-16 16"/></svg>
+                                        </div>
+                                        <div class="locked-text">Click to Reveal</div>
+                                        <div class="locked-id mono">SAMPLE-02-LOCKED</div>
+                                    </div>
+                                    <img id="reveal-torso-img" class="part-image" src="" alt="Torso">
+                                </div>
+                            </div>
+
+                            <!-- Part 3: Legs -->
+                            <div class="part-reveal-card" id="part-card-legs" data-part="legs">
+                                <div class="part-card-header">
+                                    <div class="part-badge" style="--part-color: #ffb43d;">
+                                        <span class="part-num">3</span>
+                                    </div>
+                                    <div class="part-info">
+                                        <div class="part-type" style="color: #ffb43d;">LEGS</div>
+                                        <div class="part-artist">Drawn by <span id="legs-artist" class="text-gold">---</span></div>
+                                    </div>
+                                    <button class="btn btn-secondary btn-sm part-zoom-btn hidden">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2z"/></svg>
+                                        Zoom
+                                    </button>
+                                </div>
+                                <div class="part-card-content">
+                                    <div class="part-locked-overlay">
+                                        <div class="locked-icon">
+                                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M4 4c8 4 8 12 16 16M20 4c-8 4-8 12-16 16"/></svg>
+                                        </div>
+                                        <div class="locked-text">Click to Reveal</div>
+                                        <div class="locked-id mono">SAMPLE-03-LOCKED</div>
+                                    </div>
+                                    <img id="reveal-legs-img" class="part-image" src="" alt="Legs">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Click to Reveal Overlay -->
-                    <div class="reveal-content-wrapper" id="reveal-content-wrapper">
-                        <div class="reveal-click-overlay" id="reveal-click-overlay">
-                            <div class="reveal-click-content">
-                                <div class="reveal-icon">?</div>
-                                <h3>Click to Reveal!</h3>
-                                <p>Tap anywhere to unveil this specimen</p>
+                    <!-- Right: Final Specimen -->
+                    <div class="reveal-final-column">
+                        <div class="reveal-final-header">
+                            <h3>Final specimen</h3>
+                            <span class="mono text-dim">STITCHED & ENHANCED</span>
+                        </div>
+
+                        <!-- Raw Stitched Card -->
+                        <div class="full-reveal-card" id="raw-reveal-card">
+                            <div class="full-card-header">
+                                <div>
+                                    <div class="eyebrow text-cyan">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 4l6 6-9 9-4 1 1-4 6-6 0 0z"/></svg>
+                                        Raw stitched
+                                    </div>
+                                    <div class="full-card-title">The Original</div>
+                                </div>
+                                <button class="btn btn-secondary btn-sm full-zoom-btn hidden" id="btn-zoom-raw">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2z"/></svg>
+                                    Zoom
+                                </button>
+                            </div>
+                            <div class="full-card-content" id="raw-card-content">
+                                <div class="full-locked-overlay">
+                                    <div class="locked-icon large">
+                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M4 4c8 4 8 12 16 16M20 4c-8 4-8 12-16 16"/></svg>
+                                    </div>
+                                    <div class="locked-text">Reveal Final Specimen</div>
+                                    <div class="locked-id mono">RAW-STITCHED · LOCKED</div>
+                                </div>
+                                <div class="combined-canvas-wrapper">
+                                    <canvas id="combined-canvas" width="800" height="1200"></canvas>
+                                </div>
+                            </div>
+                            <div class="full-card-actions hidden" id="raw-actions">
+                                <button id="btn-download" class="btn btn-secondary btn-sm" style="flex:1;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    Download Raw
+                                </button>
                             </div>
                         </div>
 
-                    <!-- Individual Parts Reveal -->
-                    <div class="reveal-parts-container blur-hidden" id="reveal-parts-container">
-                        <div class="reveal-part hidden" id="reveal-head">
-                            <div class="part-label">HEAD</div>
-                            <img id="reveal-head-img" src="" alt="Head">
-                        </div>
-
-                        <div class="reveal-part hidden" id="reveal-torso">
-                            <div class="part-label">TORSO</div>
-                                <img id="reveal-torso-img" src="" alt="Torso">
+                        <!-- AI Lab Card -->
+                        <div class="full-reveal-card ai-card" id="ai-reveal-card">
+                            <div class="full-card-header">
+                                <div>
+                                    <div class="eyebrow text-magenta">
+                                        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2z"/></svg>
+                                        ✦ The Lab ✦
+                                    </div>
+                                    <div class="full-card-title">Lab Enhancement</div>
+                                </div>
+                                <button class="btn btn-secondary btn-sm full-zoom-btn hidden" id="btn-zoom-ai">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2z"/></svg>
+                                    Zoom
+                                </button>
                             </div>
-
-                        <div class="reveal-part hidden" id="reveal-legs">
-                            <div class="part-label">LEGS</div>
-                            <img id="reveal-legs-img" src="" alt="Legs">
-                        </div>
-                    </div>
-
-                    </div> <!-- End reveal-content-wrapper -->
-
-                    <!-- Continue Button -->
-                    <div class="reveal-continue" id="reveal-continue">
-                        <button id="btn-reveal-continue" class="btn btn-primary btn-large">Continue to Lab</button>
-                    </div>
-
-                    <!-- Combined Raw Fursona -->
-                    <div class="reveal-final hidden" id="reveal-final">
-                        <h3 id="raw-fursona-title">Drawn Fursona</h3>
-                        <div class="combined-canvas-wrapper" id="combined-canvas-wrapper">
-                            <canvas id="combined-canvas" width="800" height="1200"></canvas>
-                        </div>
-
-                        <div class="reveal-actions">
-                            <button id="btn-download" class="btn btn-secondary">Download Drawing</button>
-                        </div>
-                    </div>
-
-                    <!-- AI Lab Section - Grand Reveal at Bottom -->
-                    <div class="ai-lab-section hidden" id="ai-lab-section">
-                        <div class="ai-lab-divider">
-                            <span>The Lab</span>
-                        </div>
-
-                        <div id="ai-placeholder">
-                            <button id="btn-generate-ai" class="btn btn-primary btn-xlarge">Create in Lab!</button>
-                            <p class="ai-note">Auto-generating... Click to prioritize!</p>
-                        </div>
-                        <div id="ai-loading" class="hidden">
-                            <div class="spinner"></div>
-                            <p id="ai-loading-text">Creating in the Lab...</p>
-                        </div>
-                        <div id="ai-result-container" class="hidden">
-                            <img id="ai-result" alt="AI Generated Fursona">
-                            <div class="style-info-display">
-                                <span class="style-label">Style:</span> <span id="display-art-style">-</span>
-                                <span class="style-separator">|</span>
-                                <span class="style-label">Background:</span> <span id="display-background">-</span>
+                            <div class="full-card-content" id="ai-card-content">
+                                <!-- Pending/Generate State -->
+                                <div class="ai-pending-state" id="ai-pending">
+                                    <div class="locked-icon large ai-glow">
+                                        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" style="color: white;"><path d="M12 2l1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2z"/></svg>
+                                    </div>
+                                    <div class="locked-text text-magenta">Reveal Lab Enhancement</div>
+                                    <div class="locked-id mono">AI-SPLICED · LOCKED</div>
+                                    <button id="btn-generate-ai" class="btn btn-secondary btn-sm" style="margin-top: 14px;">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.7 5.3L19 9l-5.3 1.7L12 16l-1.7-5.3L5 9l5.3-1.7L12 2z"/></svg>
+                                        Generate in Lab!
+                                    </button>
+                                </div>
+                                <!-- Loading State -->
+                                <div class="ai-loading-state hidden" id="ai-loading">
+                                    <div class="ai-spinner"></div>
+                                    <div class="loading-text text-magenta">Creating in the Lab…</div>
+                                    <div class="loading-sub mono">Splicing genome · Rendering style</div>
+                                </div>
+                                <!-- Result State -->
+                                <div class="ai-result-state hidden" id="ai-result-container">
+                                    <img id="ai-result" alt="AI Generated Fursona">
+                                </div>
                             </div>
-                            <div class="ai-actions">
-                                <button id="btn-download-ai" class="btn btn-secondary">Download Lab Version</button>
-                                <button id="btn-save-gallery" class="btn btn-primary">Save Both to Gallery</button>
+                            <div class="ai-card-meta hidden" id="ai-meta">
+                                <span>STYLE: <span id="display-art-style" class="text-cyan">CARTOON</span></span>
+                                <span>BG: <span id="display-background" class="text-cyan">FOREST</span></span>
+                            </div>
+                            <div class="full-card-actions hidden" id="ai-actions">
+                                <button id="btn-download-ai" class="btn btn-secondary btn-sm" style="flex:1;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    Raw
+                                </button>
+                                <button id="btn-save-gallery" class="btn btn-primary btn-sm" style="flex:1;">
+                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    Save Both
+                                </button>
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <!-- New Game Section -->
-                    <div class="new-game-section" id="new-game-section">
-                        <button id="btn-new-game" class="btn btn-primary">New Game</button>
+            <!-- Zoom Modal -->
+            <div class="zoom-modal hidden" id="zoom-modal">
+                <div class="zoom-modal-backdrop" id="zoom-modal-backdrop"></div>
+                <div class="zoom-modal-content">
+                    <button class="btn-icon zoom-close" id="zoom-close">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                    </button>
+                    <div class="zoom-header">
+                        <div class="eyebrow" id="zoom-eyebrow">Component zoom</div>
+                        <h2 id="zoom-title">HEAD</h2>
+                        <div class="zoom-artist" id="zoom-artist">Drawn by <span class="text-gold">Artist Name</span></div>
+                    </div>
+                    <div class="zoom-image-area">
+                        <img id="zoom-image" src="" alt="Zoomed view">
+                    </div>
+                    <div class="zoom-actions">
+                        <button class="btn btn-secondary btn-sm" id="btn-zoom-close">Close</button>
+                        <button class="btn btn-primary btn-sm" id="btn-zoom-download">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Download
+                        </button>
                     </div>
                 </div>
             </div>
